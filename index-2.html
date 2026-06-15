@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SLA ศูนย์กระจายสินค้า 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;background:#eef1f4;font-family:'IBM Plex Sans Thai',system-ui,-apple-system,sans-serif;color:#1b2430;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{height:6px;width:6px;}
+::-webkit-scrollbar-thumb{background:#cdd5de;border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+input{font-family:inherit;}
+button{font-family:inherit;}
+</style>
+</head>
+<body>
+<div id="root"><div style="padding:80px 0;text-align:center;color:#8b96a4;font-size:14px;">กำลังโหลด…</div></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+// ── Config ───────────────────────────────────────────────────────────────────
+const SHEET_ID = '1z0g24oCmyua1bzN1LlXiG3Bu6ydB5_2-e1ax72AtOUA';
+const csvUrl = (sheet) =>
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+
+const REGIONS = [
+  { id:'north',     name:'ภาคเหนือ',      short:'เหนือ' },
+  { id:'northeast', name:'ภาคอีสาน',      short:'อีสาน' },
+  { id:'central',   name:'ภาคกลาง',       short:'กลาง'  },
+  { id:'east',      name:'ภาคตะวันออก',   short:'ตะวันออก' },
+  { id:'south',     name:'ภาคใต้',         short:'ใต้'   },
+  { id:'west',      name:'ภาคตะวันตก',    short:'ตะวันตก' },
+  { id:'bkk',       name:'BKK',            short:'BKK'   },
+];
+
+const DC_REGION = {
+  'DC เชียงใหม่':'north','DC ลำพูน':'north','DC ลำปาง':'north','DC อุตรดิตถ์':'north',
+  'DC แพร่':'north','DC น่าน':'north','DC พะเยา':'north','DC เชียงราย':'north',
+  'DC แม่ฮ่องสอน':'north','DC ฝาง':'north','DC แม่สาย':'north','DC ตาก':'north',
+  'DC สุโขทัย':'north','DC พิษณุโลก':'north','DC พิจิตร':'north','DC เพชรบูรณ์':'north',
+  'DC นครสวรรค์':'north','DC ชัยนาท':'north',
+  'DC โคราช':'northeast','DC บุรีรัมย์':'northeast','DC สุรินทร์':'northeast',
+  'DC ศรีสะเกษ':'northeast','DC อุบลราชธานี':'northeast','DC ยโสธร':'northeast',
+  'DC ชัยภูมิ':'northeast','DC ขอนแก่น':'northeast','DC อุดรธานี':'northeast',
+  'DC หนองคาย':'northeast','DC ร้อยเอ็ด':'northeast','DC กาฬสินธุ์':'northeast',
+  'DC สกลนคร':'northeast','DC นครพนม':'northeast','DC มุกดาหาร':'northeast',
+  'DC ปากช่อง':'northeast',
+  'DC ลพบุรี':'central','DC สระบุรี':'central','DC อยุธยา':'central','DC สุพรรณบุรี':'central',
+  'DC ชลบุรี':'east','DC ระยอง':'east','DC จันทบุรี':'east',
+  'DC พัทยา':'east','DC ปราจีนบุรี':'east','DC ฉะเชิงเทรา':'east',
+  'DC ทุ่งสง':'south','DC นครศรีธรรมราช':'south','DC พังงา':'south','DC ภูเก็ต':'south',
+  'DC สุราษฎร์':'south','DC ชุมพร':'south','DC กระบี่':'south','DC หาดใหญ่':'south','DC พัทลุง':'south',
+  'DC ชะอำ':'west','DC ราชบุรี':'west','DC กาญจนบุรี':'west','DC นครปฐม':'west','DC สมุทรสาคร':'west',
+  'DC พุทธมณฑลสาย 3':'bkk','CDC บางนา':'bkk','DC รังสิต':'bkk',
+};
+
+const M_ABBR = {Jan:'ม.ค.',Feb:'ก.พ.',Mar:'มี.ค.',Apr:'เม.ย.',May:'พ.ค.',Jun:'มิ.ย.',
+  Jul:'ก.ค.',Aug:'ส.ค.',Sep:'ก.ย.',Oct:'ต.ค.',Nov:'พ.ย.',Dec:'ธ.ค.'};
+const M_FULL = {Jan:'มกราคม',Feb:'กุมภาพันธ์',Mar:'มีนาคม',Apr:'เมษายน',
+  May:'พฤษภาคม',Jun:'มิถุนายน',Jul:'กรกฎาคม',Aug:'สิงหาคม',
+  Sep:'กันยายน',Oct:'ตุลาคม',Nov:'พฤศจิกายน',Dec:'ธันวาคม'};
+
+// ── CSV Parsing ──────────────────────────────────────────────────────────────
+function parseRow(line) {
+  const fields = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (inQ && line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ; }
+    else if (c === ',' && !inQ) { fields.push(cur.trim()); cur=''; }
+    else cur += c;
+  }
+  fields.push(cur.trim());
+  return fields;
+}
+
+function parseMonthLabel(raw) {
+  const s = raw.trim();
+  const partial = s.match(/^(\d[\d\-]+)\s+(\w+)$/);
+  if (partial) {
+    const [,range,mName] = partial;
+    const key = mName.slice(0,3);
+    const thFull = M_FULL[key] || mName;
+    return { abbr: M_ABBR[key]||s, label:`${range} ${thFull}`, isPartial:true };
+  }
+  const key = s.slice(0,3);
+  return { abbr: M_ABBR[key]||s, label: M_FULL[key]||s, isPartial:false };
+}
+
+function parseSheet(text) {
+  const lines = text.replace(/\r/g,'').split('\n').filter(l => l.trim());
+  if (lines.length < 4) return null;
+  const row1 = parseRow(lines[1]); // month headers
+  const months = [];
+  const colBase = [];
+  for (let c = 1; c < row1.length; c++) {
+    if (row1[c] && row1[c] !== '') {
+      months.push(parseMonthLabel(row1[c]));
+      colBase.push(c);
+    }
+  }
+  const dcs = [];
+  for (let i = 3; i < lines.length; i++) {
+    const row = parseRow(lines[i]);
+    const name = row[0];
+    if (!name) continue;
+    const all = [], excl = [];
+    for (let m = 0; m < months.length; m++) {
+      const b = colBase[m];
+      const av = parseFloat(row[b]);
+      const ev = parseFloat(row[b+1]);
+      all.push(isNaN(av)||row[b]==='' ? null : av);
+      excl.push(isNaN(ev)||row[b+1]==='' ? null : ev);
+    }
+    dcs.push({ name, region: DC_REGION[name]||'unknown', all, excl });
+  }
+  return { months, dcs };
+}
+
+// ── Computation helpers ──────────────────────────────────────────────────────
+function avg(vals) {
+  const v = vals.filter(x => x !== null && x !== undefined && !isNaN(x));
+  return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
+}
+function latestIdx(dcs, metric) {
+  const n = dcs[0]?.[metric]?.length || 0;
+  for (let i = n-1; i >= 0; i--) {
+    if (dcs.some(d => d[metric][i] !== null)) return i;
+  }
+  return -1;
+}
+
+// ── Color helpers ────────────────────────────────────────────────────────────
+function cellColor(v) {
+  if (v===null||v===undefined) return {bg:'transparent',color:'#d0d7df'};
+  if (v>=90) return {bg:'#e7f0fb',color:'#1d5fb0'};
+  if (v>=80) return {bg:'#f1f4f7',color:'#3a4654'};
+  if (v>=70) return {bg:'#fbeae6',color:'#c44e41'};
+  return {bg:'#f6d9d2',color:'#dd5043'};
+}
+function dotColor(v) {
+  if (v===null) return '#e0e5ea';
+  if (v>=90) return '#1d5fb0'; if (v>=80) return '#8ab2d5';
+  if (v>=70) return '#e07060'; return '#dd5043';
+}
+function fmt(v) { return v===null||v===undefined?'—':v.toFixed(2); }
+function fmtN(v) { return v===null||v===undefined?'—':v.toFixed(1); }
+function fmtDelta(now,prev) {
+  if (now===null||prev===null) return {arrow:'',str:'',color:'#9aa3b0'};
+  const d=now-prev;
+  if (Math.abs(d)<0.005) return {arrow:'',str:'0.00',color:'#9aa3b0'};
+  return {arrow:d>0?'▲':'▼',str:Math.abs(d).toFixed(2),color:d>0?'#2e8a4a':'#dd5043'};
+}
+
+// ── Chip style ───────────────────────────────────────────────────────────────
+function chipActive() {return {background:'#fff',color:'#1b2430',boxShadow:'0 1px 4px rgba(0,0,0,.12)'};}
+function chipInactive() {return {background:'transparent',color:'#5f6b7a',boxShadow:'none'};}
+
+// ── Trend Chart (SVG) ────────────────────────────────────────────────────────
+function TrendChart({values, months, title, subtitle}) {
+  const valid = values.filter(v=>v!==null);
+  if (!valid.length) return null;
+  const W=400, H=140, pl=40, pr=10, pt=10, pb=24;
+  const w=W-pl-pr, h=H-pt-pb, n=values.length;
+  const mn=Math.max(0,Math.min(...valid)-4), mx=Math.max(...valid)+4, rng=mx-mn||1;
+  const cx=i=>pl+(i/(n-1))*w, cy=v=>pt+h-((v-mn)/rng)*h;
+  let path=''; let first=true;
+  for (let i=0;i<n;i++){
+    if(values[i]===null){first=true;continue;}
+    path+=first?`M${cx(i).toFixed(1)},${cy(values[i]).toFixed(1)}`:`L${cx(i).toFixed(1)},${cy(values[i]).toFixed(1)}`;
+    first=false;
+  }
+  const ticks=[];
+  for(let v=Math.ceil(mn/10)*10;v<=mx;v+=10) ticks.push(v);
+  return (
+    <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'16px 18px 10px'}}>
+      {title&&<div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{title}</div>}
+      {subtitle&&<div style={{fontSize:11.5,color:'#8b96a4',marginBottom:8}}>{subtitle}</div>}
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',display:'block',overflow:'visible'}}>
+        {ticks.map(t=>(
+          <g key={t}>
+            <line x1={pl} y1={cy(t)} x2={pl+w} y2={cy(t)} stroke="#f0f3f6" strokeWidth="1"/>
+            <text x={pl-5} y={cy(t)+3.5} textAnchor="end" fontSize="9.5" fill="#b0b8c4">{t}</text>
+          </g>
+        ))}
+        {values.map((v,i)=>(
+          <text key={i} x={cx(i)} y={H-5} textAnchor="middle" fontSize="10"
+            fill={months[i]?.isPartial?'#1d5fb0':'#b0b8c4'}>{months[i]?.abbr||''}</text>
+        ))}
+        <path d={path} fill="none" stroke="#1d5fb0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        {values.map((v,i)=>v!==null?(
+          <circle key={i} cx={cx(i)} cy={cy(v)} r="3.5" fill="#fff" stroke="#1d5fb0" strokeWidth="2.5"/>
+        ):null)}
+        {values.map((v,i)=>v!==null?(
+          <text key={`l${i}`} x={cx(i)} y={cy(v)-8} textAnchor="middle" fontSize="9" fill="#5f6b7a" fontWeight="600">
+            {fmtN(v)}
+          </text>
+        ):null)}
+      </svg>
+    </div>
+  );
+}
+
+// ── Sparkline bars ───────────────────────────────────────────────────────────
+function SparkBars({values}) {
+  const valid = values.filter(v=>v!==null);
+  if (!valid.length) return <div style={{width:116,height:30}}/>;
+  const mx = Math.max(...valid)||1;
+  return (
+    <div style={{display:'flex',alignItems:'flex-end',gap:3,height:30,width:116}}>
+      {values.map((v,i)=>{
+        const pct = v===null?0:(v/mx)*100;
+        const {color} = cellColor(v);
+        return (
+          <div key={i} style={{flex:1,display:'flex',alignItems:'flex-end',height:'100%'}}>
+            <div style={{width:'100%',background:v===null?'#eef1f4':color,height:`${Math.max(pct,5)}%`,borderRadius:2,opacity:v===null?0.3:1}}/>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Legend row ───────────────────────────────────────────────────────────────
+function Legend() {
+  return (
+    <div style={{display:'flex',gap:13,fontSize:11,color:'#8b96a4',alignItems:'center',flexWrap:'wrap'}}>
+      {[['#e7f0fb','≥90'],['#f1f4f7','80–89'],['#fbeae6','70–79'],['#f6d9d2','<70']].map(([bg,lbl])=>(
+        <span key={lbl} style={{display:'flex',alignItems:'center',gap:5}}>
+          <span style={{width:11,height:11,borderRadius:3,background:bg,display:'inline-block'}}/>
+          {lbl}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ── Heatmap Cell ─────────────────────────────────────────────────────────────
+function Cell({v,latest,size=12.5}) {
+  const {bg,color}=cellColor(v);
+  return (
+    <div style={{margin:2,padding:'5px 1px',borderRadius:6,
+      background:v===null?'transparent':bg,
+      boxShadow:latest?'inset 0 0 0 2px #0e5a61':undefined,
+      textAlign:'center'}}>
+      <span style={{fontSize:size,fontWeight:700,color:v===null?'#d0d7df':color,fontVariantNumeric:'tabular-nums'}}>
+        {fmt(v)}
+      </span>
+    </div>
+  );
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
+function Header({tab,setTab,cat,setCat,cause,setCause,isWide,months}) {
+  const showFilters = tab!=='overview';
+  const cats=[{id:'total',name:'รวม'},{id:'general',name:'ทั่วไป'},{id:'cold',name:'Coldchain'}];
+  const tabs=[{id:'overview',label:'ภาพรวม'},{id:'region',label:'ภาค'},{id:'dc',label:'รายDC'},{id:'analysis',label:'วิเคราะห์'}];
+  const tabBtn=(t)=>{
+    const active=tab===t.id;
+    return <button key={t.id} onClick={()=>setTab(t.id)} style={{
+      border:'none',cursor:'pointer',
+      padding:isWide?'8px 18px':'7px 0',
+      flex:isWide?undefined:1,
+      borderRadius:8,fontFamily:'inherit',
+      fontSize:isWide?13.5:12,fontWeight:600,
+      ...(active?chipActive():chipInactive())
+    }}>{t.label}</button>;
+  };
+  const chipBtn=(id,name,val,setter)=>{
+    const active=val===id;
+    return <button key={id} onClick={()=>setter(id)} style={{
+      border:'none',cursor:'pointer',
+      padding:isWide?'7px 14px':'6px 8px',
+      borderRadius:8,fontFamily:'inherit',
+      fontSize:isWide?12.5:10.5,fontWeight:600,
+      whiteSpace:'nowrap',
+      ...(active?chipActive():chipInactive())
+    }}>{name}</button>;
+  };
+  return (
+    <header style={{position:'sticky',top:0,zIndex:40,background:'rgba(248,250,251,0.95)',
+      backdropFilter:'blur(10px)',borderBottom:'1px solid #e1e6ec'}}>
+      {isWide ? (
+        <>
+          <div style={{maxWidth:1200,margin:'0 auto',padding:'11px 20px',display:'flex',alignItems:'center',gap:18,flexWrap:'wrap'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginRight:'auto'}}>
+              <div style={{width:42,height:42,borderRadius:11,background:'#0e5a61',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,letterSpacing:.5}}>SLA</div>
+              <div>
+                <div style={{fontSize:17,fontWeight:700,lineHeight:1.15}}>SLA ศูนย์กระจายสินค้า</div>
+                <div style={{fontSize:12.5,color:'#5f6b7a'}}>การจัดส่งตรงกำหนด · ปี 2026</div>
+              </div>
+            </div>
+            {showFilters && (
+              <>
+                <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                  <div style={{fontSize:10.5,color:'#8b96a4',fontWeight:600,paddingLeft:2}}>หมวดสินค้า</div>
+                  <div style={{display:'flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:11,padding:3}}>
+                    {cats.map(c=>chipBtn(c.id,c.name,cat,setCat))}
+                  </div>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                  <div style={{fontSize:10.5,color:'#8b96a4',fontWeight:600,paddingLeft:2}}>สาเหตุ</div>
+                  <div style={{display:'flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:11,padding:3}}>
+                    {chipBtn('all','ทุกสาเหตุ',cause,setCause)}
+                    {chipBtn('excl','ตัดสาเหตุลูกค้า',cause,setCause)}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <div style={{maxWidth:1200,margin:'0 auto',padding:'0 20px 12px',display:'flex',alignItems:'center',gap:14}}>
+            <div style={{display:'inline-flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:11,padding:3,gap:2}}>
+              {tabs.map(tabBtn)}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{padding:'9px 13px 10px',display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{display:'flex',alignItems:'center',gap:9}}>
+            <div style={{width:32,height:32,borderRadius:9,background:'#0e5a61',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:10.5,letterSpacing:.5,flexShrink:0}}>SLA</div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:13.5,fontWeight:700,lineHeight:1.12}}>SLA ศูนย์กระจายสินค้า</div>
+              <div style={{fontSize:10,color:'#5f6b7a'}}>การจัดส่งตรงกำหนด · ปี 2026</div>
+            </div>
+          </div>
+          <div style={{display:'flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:10,padding:3,gap:2}}>
+            {tabs.map(tabBtn)}
+          </div>
+          {showFilters && (
+            <div style={{display:'flex',gap:6}}>
+              <div style={{display:'flex',flex:1,minWidth:0,background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:9,padding:2}}>
+                {cats.map(c=>chipBtn(c.id,c.name,cat,setCat))}
+              </div>
+              <div style={{display:'flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:9,padding:2,flexShrink:0}}>
+                {chipBtn('all','ทุกสาเหตุ',cause,setCause)}
+                {chipBtn('excl','ตัดลูกค้า',cause,setCause)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </header>
+  );
+}
+
+// ── Overview Tab ─────────────────────────────────────────────────────────────
+function OverviewTab({data,isWide,setTab,setCat,setDcFocus}) {
+  const {ab,cc,abcc,months} = data;
+  const li = latestIdx(abcc.dcs,'all');
+  const pi = li-1>=0?li-1:-1;
+
+  const grandAll = (sheet,m) => avg(sheet.dcs.map(d=>d.all[m]));
+  const grandExcl= (sheet,m) => avg(sheet.dcs.map(d=>d.excl[m]));
+
+  const allNow=grandAll(abcc,li), allPrev=pi>=0?grandAll(abcc,pi):null;
+  const exclNow=grandExcl(abcc,li), exclPrev=pi>=0?grandExcl(abcc,pi):null;
+
+  const badCount = abcc.dcs.filter(d=>d.all[li]!==null&&d.all[li]<90).length;
+  const badPrev  = pi>=0?abcc.dcs.filter(d=>d.all[pi]!==null&&d.all[pi]<90).length:null;
+
+  const allD=fmtDelta(allNow,allPrev), exclD=fmtDelta(exclNow,exclPrev);
+  const badD=fmtDelta(badCount,badPrev);
+
+  const worstM = months.map((m,i)=>({i,v:grandAll(abcc,i)})).filter(x=>x.v!==null).sort((a,b)=>a.v-b.v)[0];
+
+  const ovRegions = REGIONS.map(r=>{
+    const rdcs=abcc.dcs.filter(d=>d.region===r.id);
+    if(!rdcs.length)return null;
+    const now=avg(rdcs.map(d=>d.all[li])), prev=pi>=0?avg(rdcs.map(d=>d.all[pi])):null;
+    const exclNow=avg(rdcs.map(d=>d.excl[li]));
+    const {color:nowColor}=cellColor(now); const d=fmtDelta(now,prev);
+    const bad=rdcs.filter(d=>d.all[li]!==null&&d.all[li]<90).length;
+    return { id:r.id, name:r.name, now:fmt(now), nowColor, excl:fmt(exclNow),
+      dArrow:d.arrow, delta:d.str, dColor:d.color,
+      dot:dotColor(now), count:rdcs.length, bad, badColor:bad>0?'#dd5043':'#2e8a4a',
+      bars:months.map((_,i)=>avg(rdcs.map(dc=>dc.all[i])))
+    };
+  }).filter(Boolean).sort((a,b)=>parseFloat(b.now)-parseFloat(a.now));
+
+  const grand={now:fmt(allNow),nowColor:cellColor(allNow).color,excl:fmt(exclNow),
+    count:abcc.dcs.length,bad:badCount,badColor:badCount>0?'#dd5043':'#2e8a4a'};
+
+  const sortedDcs=[...abcc.dcs].filter(d=>d.all[li]!==null).sort((a,b)=>a.all[li]-b.all[li]);
+  const worstDcs=sortedDcs.slice(0,6);
+  const topDcs=[...sortedDcs].reverse().slice(0,6);
+
+  const trendAll = months.map((_,i)=>grandAll(abcc,i));
+  const trendGen = months.map((_,i)=>grandAll(ab,i));
+  const trendCold= months.map((_,i)=>grandAll(cc,i));
+
+  const monthLabel=months[li]?.label||'';
+
+  function DcRow({dc}) {
+    const v=dc.all[li], prev=pi>=0?dc.all[pi]:null;
+    const d=fmtDelta(v,prev);
+    return (
+      <div onClick={()=>{setTab('dc');setDcFocus(dc.name);}}
+        style={{display:'flex',alignItems:'center',gap:9,padding:'5px 11px',borderRadius:10,cursor:'pointer'}}
+        onMouseEnter={e=>e.currentTarget.style.background='#f6f8f9'}
+        onMouseLeave={e=>e.currentTarget.style.background=''}>
+        <div style={{width:7,height:7,borderRadius:'50%',background:dotColor(v),flexShrink:0}}/>
+        <div style={{minWidth:0,flex:1,fontSize:'clamp(11px,2.9vw,13px)',fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{dc.name}</div>
+        <div style={{fontSize:'clamp(13px,3.5vw,16px)',fontWeight:700,color:cellColor(v).color,fontVariantNumeric:'tabular-nums',flexShrink:0}}>{fmt(v)}</div>
+        <div style={{fontSize:'clamp(9px,2.4vw,10.5px)',color:d.color,fontWeight:600,fontVariantNumeric:'tabular-nums',flexShrink:0,minWidth:44,textAlign:'right'}}>{d.arrow} {d.str}</div>
+      </div>
+    );
+  }
+
+  return (
+    <section>
+      {/* Summary cards */}
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,flexWrap:'wrap',marginBottom:11}}>
+        <div style={{fontSize:14,fontWeight:700}}>ภาพรวมเดือนล่าสุด</div>
+        <div style={{fontSize:'clamp(9px,2.3vw,10px)',color:'#8b96a4'}}>{monthLabel} · ข้อมูลรวมทุกหมวด</div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(145px,1fr))',gap:12,marginBottom:16}}>
+        {[
+          {label:'SLA ทุกสาเหตุ',val:fmt(allNow),d:allD,valC:cellColor(allNow).color},
+          {label:'SLA ตัดสาเหตุลูกค้า',val:fmt(exclNow),d:exclD,valC:cellColor(exclNow).color},
+          {label:'DC ต่ำกว่า 90%',val:badCount,d:{...badD,color:badD.arrow==='▲'?'#dd5043':badD.arrow==='▼'?'#2e8a4a':'#9aa3b0'},valC:badCount>3?'#dd5043':'#2e8a4a'},
+        ].map(({label,val,d,valC})=>(
+          <div key={label} style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'11px 16px'}}>
+            <div style={{fontSize:12,color:'#3a4654',fontWeight:600}}>{label}</div>
+            <div style={{fontSize:'clamp(20px,5.4vw,23px)',fontWeight:700,marginTop:5,fontVariantNumeric:'tabular-nums',lineHeight:1,color:valC}}>{val}</div>
+            <div style={{fontSize:11,marginTop:4,color:d.color,fontWeight:600}}>{d.arrow} {d.str} <span style={{color:'#8b96a4',fontWeight:400}}>จากเดือนก่อน</span></div>
+          </div>
+        ))}
+        {worstM && (
+          <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'11px 16px'}}>
+            <div style={{fontSize:12,color:'#3a4654',fontWeight:600}}>เดือนที่ SLA ต่ำสุด</div>
+            <div style={{fontSize:'clamp(16px,4.5vw,19px)',fontWeight:700,marginTop:5,lineHeight:1.1,color:'#dd5043'}}>{months[worstM.i]?.label}</div>
+            <div style={{fontSize:11,marginTop:4,color:'#8b96a4'}}>SLA เฉลี่ย {fmt(worstM.v)}%</div>
+          </div>
+        )}
+      </div>
+
+      {/* Trend charts */}
+      <div style={{marginBottom:16}}>
+        <TrendChart values={trendAll} months={months} title="แนวโน้ม SLA รวม (AB+CC)" subtitle="เฉลี่ยทุก DC · ทุกสาเหตุ"/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:16,marginBottom:16}}>
+        <TrendChart values={trendGen} months={months} title="แนวโน้ม SLA ทั่วไป (AB)"/>
+        <TrendChart values={trendCold} months={months} title="แนวโน้ม SLA Coldchain (CC)"/>
+      </div>
+
+      {/* Region table */}
+      <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'18px 20px 14px',marginBottom:16}}>
+        <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:12,gap:10,flexWrap:'wrap'}}>
+          <div style={{fontSize:14,fontWeight:700}}>SLA ตามภาค · {monthLabel}</div>
+          <div style={{fontSize:11.5,color:'#8b96a4'}}>รวมทุกหมวด · ทุกสาเหตุ</div>
+        </div>
+        {isWide ? (
+          <>
+            <div style={{display:'grid',gridTemplateColumns:'minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(140px,2.3fr)',gap:10,alignItems:'center',padding:'0 6px 9px',borderBottom:'1px solid #eef1f4',fontSize:11,color:'#8b96a4',fontWeight:600}}>
+              <div>ภาค</div><div style={{textAlign:'center'}}>DC</div><div style={{textAlign:'center'}}>ต่ำกว่า 90</div>
+              <div style={{textAlign:'right'}}>ทุกสาเหตุ</div><div style={{textAlign:'right'}}>ตัดลูกค้า</div><div style={{textAlign:'right'}}>แนวโน้มรายเดือน</div>
+            </div>
+            {ovRegions.map(r=>(
+              <div key={r.id} style={{display:'grid',gridTemplateColumns:'minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(140px,2.3fr)',gap:10,alignItems:'center',padding:'6px 6px',borderBottom:'1px solid #f3f5f7'}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:600}}>{r.name}</div>
+                  <div style={{fontSize:11,color:r.dColor,fontWeight:600,marginTop:2}}>{r.dArrow} {r.delta} <span style={{color:'#9aa3b0',fontWeight:400}}>จากเดือนก่อน</span></div>
+                </div>
+                <div style={{textAlign:'center',fontSize:13,color:'#5f6b7a',fontVariantNumeric:'tabular-nums'}}>{r.count}</div>
+                <div style={{textAlign:'center',fontSize:13,fontWeight:600,color:r.badColor,fontVariantNumeric:'tabular-nums'}}>{r.bad}</div>
+                <div style={{textAlign:'right',fontSize:16,fontWeight:700,color:r.nowColor,fontVariantNumeric:'tabular-nums'}}>{r.now}</div>
+                <div style={{textAlign:'right',fontSize:13,color:'#9aa3b0',fontVariantNumeric:'tabular-nums'}}>{r.excl}</div>
+                <div style={{display:'flex',justifyContent:'flex-end'}}><SparkBars values={r.bars}/></div>
+              </div>
+            ))}
+            <div style={{display:'grid',gridTemplateColumns:'minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(140px,2.3fr)',gap:10,alignItems:'center',padding:'9px 12px',background:'#f6f8f9',borderRadius:10,margin:'5px -6px 2px'}}>
+              <div style={{fontSize:14,fontWeight:700}}>ภาพรวมทั้งหมด</div>
+              <div style={{textAlign:'center',fontSize:13,color:'#5f6b7a',fontVariantNumeric:'tabular-nums'}}>{grand.count}</div>
+              <div style={{textAlign:'center',fontSize:13,fontWeight:600,color:grand.badColor,fontVariantNumeric:'tabular-nums'}}>{grand.bad}</div>
+              <div style={{textAlign:'right',fontSize:16,fontWeight:700,color:grand.nowColor,fontVariantNumeric:'tabular-nums'}}>{grand.now}</div>
+              <div style={{textAlign:'right',fontSize:13,color:'#9aa3b0',fontVariantNumeric:'tabular-nums'}}>{grand.excl}</div>
+              <div/>
+            </div>
+          </>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:5}}>
+            {ovRegions.map(r=>(
+              <div key={r.id} style={{display:'flex',alignItems:'center',gap:9,padding:'5px 11px',borderRadius:10}}>
+                <div style={{width:7,height:7,borderRadius:'50%',background:r.dot,flexShrink:0}}/>
+                <div style={{minWidth:0,flex:1,fontSize:'clamp(11px,2.9vw,13px)',fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
+                <div style={{fontSize:'clamp(13.5px,3.6vw,16px)',fontWeight:700,color:r.nowColor,fontVariantNumeric:'tabular-nums',textAlign:'right',flexShrink:0}}>{r.now}</div>
+                <div style={{fontSize:'clamp(9px,2.4vw,10.5px)',color:r.dColor,fontWeight:600,fontVariantNumeric:'tabular-nums',flexShrink:0,minWidth:44,textAlign:'right'}}>{r.dArrow} {r.delta}</div>
+              </div>
+            ))}
+            <div style={{display:'flex',alignItems:'center',gap:9,padding:'7px 11px',borderRadius:10,background:'#f6f8f9',marginTop:3}}>
+              <div style={{width:7,height:7,flexShrink:0}}/>
+              <div style={{minWidth:0,flex:1,fontSize:'clamp(11px,2.9vw,13px)',fontWeight:700}}>ภาพรวมทั้งหมด</div>
+              <div style={{fontSize:'clamp(13.5px,3.6vw,16px)',fontWeight:700,color:grand.nowColor,fontVariantNumeric:'tabular-nums',textAlign:'right',flexShrink:0}}>{grand.now}</div>
+              <div style={{flexShrink:0,minWidth:44}}/>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Worst / Top DC */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(290px,1fr))',gap:16}}>
+        <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'20px 22px'}}>
+          <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:14,gap:10,flexWrap:'wrap'}}>
+            <div style={{fontSize:14,fontWeight:700}}>DC ที่ต้องเร่งแก้ไข</div>
+            <div style={{fontSize:11.5,color:'#8b96a4'}}>SLA รวม · ทุกสาเหตุ · ต่ำสุด · {monthLabel}</div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:3}}>
+            {worstDcs.map(dc=><DcRow key={dc.name} dc={dc}/>)}
+          </div>
+        </div>
+        <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'20px 22px'}}>
+          <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:14,gap:10,flexWrap:'wrap'}}>
+            <div style={{fontSize:14,fontWeight:700}}>ผลงานดีเด่น</div>
+            <div style={{fontSize:11.5,color:'#8b96a4'}}>SLA รวม · ทุกสาเหตุ · สูงสุด · {monthLabel}</div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:3}}>
+            {topDcs.map(dc=><DcRow key={dc.name} dc={dc}/>)}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Region Tab ────────────────────────────────────────────────────────────────
+function RegionTab({data,cat,cause,isWide,expanded,setExpanded}) {
+  const sheet = cat==='total'?data.abcc:cat==='cold'?data.cc:data.ab;
+  const {months,dcs} = sheet;
+  const metric = cause;
+  const n=months.length;
+  const li=latestIdx(dcs,metric);
+
+  // Mobile: last 3 months; Desktop: all months
+  const mobileMs = months.map((_,i)=>i).filter(i=>dcs.some(d=>d[metric][i]!==null)).slice(-3);
+  const shownMs = isWide ? months.map((_,i)=>i) : mobileMs;
+
+  const causeLabel = cause==='all'?'ทุกสาเหตุ':'ตัดสาเหตุลูกค้า';
+  const catName = cat==='total'?'รวม':cat==='cold'?'Coldchain':'ทั่วไป';
+
+  const regions = REGIONS.map(r=>{
+    const rdcs=dcs.filter(d=>d.region===r.id);
+    if(!rdcs.length)return null;
+    const cells = shownMs.map(i=>({
+      v: avg(rdcs.map(d=>d[metric][i])),
+      latest: i===li
+    }));
+    const allCells = months.map((_,i)=>avg(rdcs.map(d=>d[metric][i])));
+    const now=allCells[li], prev=li>0?allCells[li-1]:null;
+    const d=fmtDelta(now,prev);
+    const dcsSorted=[...rdcs].sort((a,b)=>{
+      const av=a[metric][li]??-1, bv=b[metric][li]??-1;
+      return bv-av;
+    });
+    return { id:r.id, name:r.name, short:r.short, count:rdcs.length, cells,
+      avgAll:fmt(avg(allCells.filter(v=>v!==null))),
+      avgAllColor:cellColor(avg(allCells.filter(v=>v!==null))).color,
+      delta:d.str,deltaArrow:d.arrow,deltaColor:d.color,
+      rowBg:expanded[r.id]?'#f8f9fb':'#fff',
+      dcs: dcsSorted.map((dc,ri)=>{
+        const dcCells = shownMs.map(i=>({v:dc[metric][i],latest:i===li}));
+        const dcAllVals = months.map((_,i)=>dc[metric][i]);
+        const dcNow=dcAllVals[li], dcPrev=li>0?dcAllVals[li-1]:null;
+        const dd=fmtDelta(dcNow,dcPrev);
+        return { name:dc.name, rank:ri+1, cells:dcCells,
+          avg:fmt(avg(dcAllVals.filter(v=>v!==null))),
+          avgColor:cellColor(avg(dcAllVals.filter(v=>v!==null))).color,
+          dArrow:dd.arrow,delta:dd.str,dColor:dd.color };
+      })
+    };
+  }).filter(Boolean);
+
+  const gridCols = isWide
+    ? `minmax(200px,2fr) repeat(${shownMs.length},minmax(42px,1fr)) minmax(48px,0.78fr) minmax(56px,0.85fr)`
+    : `minmax(100px,1.5fr) repeat(${shownMs.length},minmax(40px,1fr)) minmax(44px,0.85fr)`;
+
+  return (
+    <section style={{display:'flex',flexDirection:'column',gap:11}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+        <div style={{fontSize:'clamp(10px,2.6vw,12px)',color:'#8b96a4'}}>รายภาค · กดเพื่อกาง DC · {causeLabel} · หมวด {catName}</div>
+        <Legend/>
+      </div>
+      <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'hidden'}}>
+        {/* Header */}
+        <div style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
+          padding:`${isWide?11:9}px ${isWide?14:11}px ${isWide?10:8}px`,
+          borderBottom:'1px solid #eef1f4',background:'#fbfcfd'}}>
+          <div style={{fontSize:isWide?11:10,color:'#8b96a4',fontWeight:700}}>ภาค / DC</div>
+          {shownMs.map(i=>(
+            <div key={i} style={{fontSize:isWide?11.5:10.5,fontWeight:months[i]?.isPartial?700:500,color:months[i]?.isPartial?'#1d5fb0':'#8b96a4',textAlign:'center'}}>
+              {months[i]?.abbr}
+            </div>
+          ))}
+          {isWide&&<div style={{fontSize:11,color:'#8b96a4',fontWeight:700,textAlign:'center'}}>เฉลี่ย</div>}
+          <div style={{fontSize:isWide?11:10,color:'#8b96a4',fontWeight:700,textAlign:'right'}}>เทียบ</div>
+        </div>
+        {/* Rows */}
+        {regions.map(r=>(
+          <div key={r.id} style={{borderBottom:'1px solid #f3f5f7'}}>
+            <div onClick={()=>setExpanded(e=>({...e,[r.id]:!e[r.id]}))}
+              style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
+                padding:`${isWide?7:6}px ${isWide?14:11}px`,cursor:'pointer',background:r.rowBg}}>
+              <div style={{display:'flex',alignItems:'center',gap:isWide?9:6,minWidth:0}}>
+                <span style={{width:isWide?14:11,textAlign:'center',color:'#b6bfca',fontSize:isWide?12:10,
+                  transform:expanded[r.id]?'rotate(0deg)':'rotate(-90deg)',transition:'transform .15s',flexShrink:0}}>▾</span>
+                <span style={{width:isWide?9:7,height:isWide?9:7,borderRadius:'50%',background:'#1d5fb0',flexShrink:0}}/>
+                <span style={{flex:1,minWidth:0,fontSize:isWide?14:12,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  {isWide?r.name:r.short}
+                </span>
+                <span style={{fontSize:isWide?10.5:9,color:'#9aa3b0',fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>{r.count} DC</span>
+              </div>
+              {r.cells.map((c,ci)=>(
+                <div key={ci} style={{margin:isWide?2:1.5,padding:`${isWide?7:4}px 1px`,borderRadius:isWide?6:5,
+                  background:c.v===null?'transparent':cellColor(c.v).bg,
+                  boxShadow:c.latest?'inset 0 0 0 2px #0e5a61':undefined,textAlign:'center'}}>
+                  <span style={{fontSize:isWide?13:11,fontWeight:700,color:c.v===null?'#d0d7df':cellColor(c.v).color,fontVariantNumeric:'tabular-nums'}}>
+                    {fmt(c.v)}
+                  </span>
+                </div>
+              ))}
+              {isWide&&(
+                <div style={{margin:2,padding:'7px 1px',borderRadius:6,background:'#eef3f6',textAlign:'center'}}>
+                  <span style={{fontSize:13,fontWeight:700,color:r.avgAllColor,fontVariantNumeric:'tabular-nums'}}>{r.avgAll}</span>
+                </div>
+              )}
+              <div style={{textAlign:'right',fontSize:isWide?11.5:9.5,fontWeight:700,color:r.deltaColor,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>
+                {r.deltaArrow} {r.delta}
+              </div>
+            </div>
+            {expanded[r.id]&&(
+              <div style={{background:'#fafbfc',padding:'2px 0 6px'}}>
+                {r.dcs.map(d=>(
+                  <div key={d.name} style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
+                    padding:`${isWide?1:0}px ${isWide?14:11}px`,cursor:'default'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:isWide?8:5,minWidth:0,paddingLeft:isWide?23:17}}>
+                      <span style={{fontSize:isWide?10:9,fontWeight:700,color:'#b6bfca',minWidth:isWide?15:12,textAlign:'center',fontVariantNumeric:'tabular-nums',flexShrink:0}}>{d.rank}</span>
+                      <span style={{flex:1,minWidth:0,fontSize:isWide?12.5:11,fontWeight:600,color:'#3a4654',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name}</span>
+                    </div>
+                    {d.cells.map((c,ci)=>(
+                      <div key={ci} style={{margin:isWide?'1.5px':1,padding:`${isWide?5:3}px 1px`,borderRadius:isWide?5:4,
+                        background:c.v===null?'transparent':cellColor(c.v).bg,
+                        boxShadow:c.latest?'inset 0 0 0 1.5px #0e5a61':undefined,textAlign:'center'}}>
+                        <span style={{fontSize:isWide?11.5:10.5,fontWeight:700,color:c.v===null?'#d0d7df':cellColor(c.v).color,fontVariantNumeric:'tabular-nums'}}>
+                          {fmt(c.v)}
+                        </span>
+                      </div>
+                    ))}
+                    {isWide&&(
+                      <div style={{margin:'1.5px',padding:'5px 1px',borderRadius:5,background:'#f4f7f9',textAlign:'center'}}>
+                        <span style={{fontSize:11.5,fontWeight:700,color:d.avgColor,fontVariantNumeric:'tabular-nums'}}>{d.avg}</span>
+                      </div>
+                    )}
+                    <div style={{textAlign:'right',fontSize:isWide?10.5:9,fontWeight:600,color:d.dColor,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>
+                      {d.dArrow} {d.delta}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── DC Tab ────────────────────────────────────────────────────────────────────
+function DCTab({data,cat,cause,isWide,dcFocus}) {
+  const sheet = cat==='total'?data.abcc:cat==='cold'?data.cc:data.ab;
+  const {months,dcs} = sheet;
+  const metric = cause;
+  const li=latestIdx(dcs,metric);
+
+  const [q, setQ] = useState(dcFocus||'');
+  const [regionF, setRegionF] = useState('all');
+  const [sortKey, setSortKey] = useState('latest');
+  const [sortDir, setSortDir] = useState(-1); // -1=desc, 1=asc
+
+  useEffect(()=>{ if(dcFocus) setQ(dcFocus); },[dcFocus]);
+
+  const causeLabel = cause==='all'?'ทุกสาเหตุ':'ตัดสาเหตุลูกค้า';
+  const catName = cat==='total'?'รวม':cat==='cold'?'Coldchain':'ทั่วไป';
+
+  // Mobile: last 3 months; Desktop: all months
+  const shownMs = useMemo(()=>{
+    const all = months.map((_,i)=>i).filter(i=>dcs.some(d=>d[metric][i]!==null));
+    return isWide ? all : all.slice(-3);
+  },[months,dcs,metric,isWide]);
+
+  const filtered = useMemo(()=>{
+    let rows = dcs.filter(d=>{
+      if(q && !d.name.toLowerCase().includes(q.toLowerCase())) return false;
+      if(regionF!=='all' && d.region!==regionF) return false;
+      return true;
+    });
+    rows = rows.map(dc=>{
+      const vals = months.map((_,i)=>dc[metric][i]);
+      const validVals = vals.filter(v=>v!==null);
+      const dcAvg = avg(validVals);
+      const now=vals[li], prev=li>0?vals[li-1]:null;
+      const d=fmtDelta(now,prev);
+      const signedDelta=(now!==null&&prev!==null)?now-prev:null;
+      return { ...dc, vals, dcAvg, dcAvgFmt:fmt(dcAvg), avgColor:cellColor(dcAvg).color,
+        dArrow:d.arrow, delta:d.str, dColor:d.color, signedDelta,
+        cells: shownMs.map(i=>({v:vals[i],latest:i===li})),
+      };
+    });
+    rows.sort((a,b)=>{
+      let av,bv;
+      if(sortKey==='name'){av=a.name;bv=b.name;return sortDir*(av<bv?-1:1);}
+      if(sortKey==='avg'){av=a.dcAvg??-999;bv=b.dcAvg??-999;}
+      else if(sortKey==='change'){av=a.signedDelta??-999;bv=b.signedDelta??-999;}
+      else {const mi=parseInt(sortKey);av=a.vals[mi]??-999;bv=b.vals[mi]??-999;}
+      return sortDir*(bv-av);
+    });
+    return rows;
+  },[dcs,metric,months,li,shownMs,q,regionF,sortKey,sortDir]);
+
+  function SortHdr({label,k,right}) {
+    const active=sortKey===k;
+    return (
+      <div onClick={()=>{if(sortKey===k)setSortDir(d=>-d);else{setSortKey(k);setSortDir(-1);}}}
+        style={{cursor:'pointer',display:'flex',alignItems:'center',justifyContent:right?'flex-end':'center',gap:3,
+          fontSize:isWide?11:10,fontWeight:700,color:active?'#0e5a61':'#8b96a4',userSelect:'none'}}>
+        {label}<span style={{fontSize:isWide?9:8,color:'#0e5a61'}}>{active?(sortDir===-1?'▼':'▲'):''}</span>
+      </div>
+    );
+  }
+
+  const gridCols = isWide
+    ? `minmax(110px,1.5fr) repeat(${shownMs.length},minmax(40px,1fr)) minmax(48px,1fr) minmax(54px,0.9fr)`
+    : `minmax(90px,1.5fr) repeat(${shownMs.length},minmax(38px,1fr)) minmax(44px,0.85fr)`;
+
+  return (
+    <section>
+      {/* Search */}
+      <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:14}}>
+        <input value={q} onInput={e=>setQ(e.target.value)} placeholder="ค้นหาชื่อ DC…"
+          style={{flex:1,minWidth:180,padding:'10px 14px',border:'1px solid #dce1e7',borderRadius:10,fontSize:13.5,background:'#fff',color:'#1b2430',outline:'none'}}/>
+      </div>
+      {/* Region chips (desktop) */}
+      {isWide&&(
+        <div style={{display:'flex',gap:7,flexWrap:'wrap',marginBottom:16}}>
+          {[{id:'all',name:'ทั้งหมด'},...REGIONS].map(r=>{
+            const active=regionF===r.id;
+            return <button key={r.id} onClick={()=>setRegionF(r.id)}
+              style={{padding:'7px 14px',border:`1px solid ${active?'#1d5fb0':'#dce1e7'}`,borderRadius:20,
+                background:active?'#e7f0fb':'#fff',color:active?'#1d5fb0':'#5f6b7a',
+                fontFamily:'inherit',fontSize:12.5,fontWeight:600,cursor:'pointer'}}>
+              {r.name||r.short}
+            </button>;
+          })}
+        </div>
+      )}
+      {/* Count + legend */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap',marginBottom:10}}>
+        <div style={{fontSize:'clamp(10px,2.6vw,12px)',color:'#8b96a4'}}>{filtered.length} DC · {causeLabel} · หมวด {catName}</div>
+        <Legend/>
+      </div>
+      {/* Table */}
+      <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'auto',maxHeight:'72vh'}}>
+        <div style={{minWidth:isWide?540:340}}>
+          {/* Header */}
+          <div style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
+            padding:`${isWide?11:9}px ${isWide?12:10}px ${isWide?10:8}px`,
+            borderBottom:'1px solid #eef1f4',position:'sticky',top:0,zIndex:3,background:'#fff',userSelect:'none'}}>
+            <SortHdr label="DC" k="name" right={false}/>
+            {shownMs.map(i=>(
+              <div key={i} onClick={()=>{setSortKey(i);setSortDir(d=>sortKey===i?-d:-1);}}
+                style={{cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:2,
+                  fontSize:isWide?11.5:10.5,fontWeight:months[i]?.isPartial?700:sortKey===i?700:500,
+                  color:sortKey===i?'#0e5a61':months[i]?.isPartial?'#1d5fb0':'#8b96a4'}}>
+                {months[i]?.abbr}
+                <span style={{fontSize:isWide?9:8,color:'#0e5a61'}}>{sortKey===i?(sortDir===-1?'▼':'▲'):''}</span>
+              </div>
+            ))}
+            {isWide&&<SortHdr label="เฉลี่ย" k="avg" right={false}/>}
+            <SortHdr label="เทียบ" k="change" right={true}/>
+          </div>
+          {/* DC rows */}
+          {filtered.map((dc,ri)=>(
+            <div key={dc.name} style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
+              padding:`${isWide?5:1}px ${isWide?12:10}px`,borderBottom:'1px solid #f3f5f7'}}>
+              <div style={{display:'flex',alignItems:'center',gap:isWide?8:6,minWidth:0}}>
+                <span style={{fontSize:isWide?9.5:9,fontWeight:700,color:'#b6bfca',minWidth:isWide?15:13,textAlign:'center',fontVariantNumeric:'tabular-nums',flexShrink:0}}>{ri+1}</span>
+                <div style={{minWidth:0,fontSize:isWide?13:11.5,fontWeight:600,color:'#1b2430',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{dc.name}</div>
+              </div>
+              {dc.cells.map((c,ci)=>(
+                <div key={ci} style={{margin:isWide?2:1,padding:`${isWide?6:3}px 1px`,borderRadius:isWide?6:5,
+                  background:c.v===null?'transparent':cellColor(c.v).bg,
+                  boxShadow:c.latest?'inset 0 0 0 2px #0e5a61':undefined,textAlign:'center'}}>
+                  <span style={{fontSize:isWide?12.5:11,fontWeight:c.latest?700:600,color:c.v===null?'#d0d7df':cellColor(c.v).color,fontVariantNumeric:'tabular-nums'}}>
+                    {fmt(c.v)}
+                  </span>
+                </div>
+              ))}
+              {isWide&&(
+                <div style={{margin:2,padding:'6px 1px',borderRadius:6,background:'#f4f7f9',textAlign:'center'}}>
+                  <span style={{fontSize:12.5,fontWeight:700,color:dc.avgColor,fontVariantNumeric:'tabular-nums'}}>{dc.dcAvgFmt}</span>
+                </div>
+              )}
+              <div style={{textAlign:'right',fontSize:isWide?11.5:10,fontWeight:600,color:dc.dColor,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>
+                {dc.dArrow} {dc.delta}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Analysis Tab ──────────────────────────────────────────────────────────────
+function AnalysisTab({data,cat,cause,isWide}) {
+  const sheet = cat==='total'?data.abcc:cat==='cold'?data.cc:data.ab;
+  const {months,dcs} = sheet;
+  const metric = cause;
+  const li=latestIdx(dcs,metric);
+  const pi=li>0?li-1:-1;
+
+  const causeLabel = cause==='all'?'ทุกสาเหตุ':'ตัดสาเหตุลูกค้า';
+  const catName = cat==='total'?'รวม':cat==='cold'?'Coldchain':'ทั่วไป';
+
+  // Mobile: last 3 months; Desktop: all months
+  const shownMs = useMemo(()=>{
+    const all = months.map((_,i)=>i).filter(i=>dcs.some(d=>d[metric][i]!==null));
+    return isWide ? all : all.slice(-3);
+  },[months,dcs,metric,isWide]);
+
+  // Distribution heatmap — count DCs in each tier per month
+  const tiers = [
+    {name:'≥90%',dot:'#1d5fb0',fn:v=>v>=90},
+    {name:'80–89%',dot:'#8ab2d5',fn:v=>v>=80&&v<90},
+    {name:'70–79%',dot:'#e07060',fn:v=>v>=70&&v<80},
+    {name:'<70%',dot:'#dd5043',fn:v=>v<70},
+  ];
+  const distData = tiers.map(t=>({
+    ...t,
+    cells: shownMs.map(i=>{
+      const vals = dcs.map(d=>d[metric][i]).filter(v=>v!==null);
+      const cnt = vals.filter(t.fn).length;
+      const mx = vals.length||1;
+      const intensity = cnt/mx;
+      // Color: deeper = more DCs in this tier
+      const alpha = 0.15+intensity*0.75;
+      let bg;
+      if(t.dot==='#1d5fb0') bg=`rgba(29,95,176,${alpha})`;
+      else if(t.dot==='#8ab2d5') bg=`rgba(138,178,213,${alpha})`;
+      else if(t.dot==='#e07060') bg=`rgba(224,112,96,${alpha})`;
+      else bg=`rgba(221,80,67,${alpha})`;
+      const textColor = intensity>0.5?'#fff':'#1b2430';
+      return { v:cnt, bg, color:textColor, ring:i===li?'inset 0 0 0 2px #0e5a61':undefined };
+    })
+  }));
+
+  // Trajectory quadrant (based on latest SLA level vs 3-month trend)
+  const trajectoryDcs = dcs.map(dc=>{
+    const v = dc[metric][li];
+    if(v===null) return null;
+    const trend3 = [li-2,li-1,li].filter(i=>i>=0&&dc[metric][i]!==null).map(i=>dc[metric][i]);
+    const trendSlope = trend3.length>=2 ? trend3[trend3.length-1]-trend3[0] : 0;
+    const trendPerM = trend3.length>1 ? trendSlope/(trend3.length-1) : 0;
+    return { ...dc, v, trendPerM };
+  }).filter(Boolean);
+
+  const groups = [
+    { key:'hi-up', title:'ระดับสูง + กำลังดีขึ้น', desc:'SLA ≥90 · แนวโน้มขึ้น', headBg:'#eef9f1', accent:'#2e8a4a',
+      fn: d=>d.v>=90&&d.trendPerM>=0 },
+    { key:'hi-dn', title:'ระดับสูง + กำลังลดลง', desc:'SLA ≥90 · แนวโน้มลง · ต้องเฝ้าระวัง', headBg:'#fff8ec', accent:'#c17d22',
+      fn: d=>d.v>=90&&d.trendPerM<0 },
+    { key:'lo-up', title:'ระดับต่ำ + กำลังฟื้นตัว', desc:'SLA <90 · แนวโน้มขึ้น · กำลังดีขึ้น', headBg:'#ecf5ff', accent:'#1d5fb0',
+      fn: d=>d.v<90&&d.trendPerM>=0 },
+    { key:'lo-dn', title:'ต้องเข้าช่วยเหลือด่วน', desc:'SLA <90 · แนวโน้มลง · เร่งด่วน', headBg:'#fdf0ef', accent:'#dd5043',
+      fn: d=>d.v<90&&d.trendPerM<0 },
+  ].map(g=>{
+    const list = trajectoryDcs.filter(g.fn).sort((a,b)=>a.v-b.v);
+    const show = list.slice(0,5);
+    const more = list.length-show.length;
+    return { ...g, count:list.length, list:show.map(d=>{
+      const sl = fmtDelta(d.v, pi>=0?d[metric][pi]:null);
+      return { name:d.name, v:fmt(d.v), sl:fmt(d.trendPerM), slArrow:d.trendPerM>0.005?'▲':d.trendPerM<-0.005?'▼':'', slColor:d.trendPerM>0.005?'#2e8a4a':d.trendPerM<-0.005?'#dd5043':'#9aa3b0' };
+    }), moreText:more>0?`+${more} DC อื่น`:'' };
+  });
+
+  // Cause analysis — compare "all" vs "excl" to find customer-caused gaps
+  const causeData = sheet.dcs.map(dc=>{
+    const allV=dc.all[li], exclV=dc.excl[li];
+    if(allV===null||exclV===null) return null;
+    const gap=exclV-allV;
+    return { ...dc, allV, exclV, gap };
+  }).filter(Boolean).sort((a,b)=>b.gap-a.gap);
+
+  const fromCust = causeData.filter(d=>d.gap>3).slice(0,8);
+  const internal = causeData.filter(d=>d.gap<=3&&d.exclV<90).sort((a,b)=>a.exclV-b.exclV).slice(0,8);
+
+  const gridDistCols = `minmax(80px,0.9fr) repeat(${shownMs.length},1fr)`;
+
+  return (
+    <section>
+      {/* Distribution heatmap */}
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,flexWrap:'wrap',margin:'0 0 11px'}}>
+        <div style={{fontSize:14,fontWeight:700}}>การกระจายตัวของ DC ตามระดับ SLA</div>
+        <div style={{fontSize:'clamp(9.5px,2.6vw,11.5px)',color:'#8b96a4'}}>{causeLabel} · หมวด {catName}</div>
+      </div>
+      <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'16px 18px',marginBottom:22}}>
+        <div style={{fontSize:11,color:'#9aa3b0',marginBottom:9}}>ตัวเลข = จำนวน DC (แห่ง) · สีเข้ม = ยิ่งมากในกลุ่มนั้น · กรอบเขียว = เดือนล่าสุด</div>
+        <div style={{overflowX:'auto'}}>
+          <div style={{minWidth:300,display:'grid',gridTemplateColumns:gridDistCols,gap:6,alignItems:'center'}}>
+            <div style={{fontSize:10.5,color:'#9aa3b0',fontWeight:600}}>กลุ่ม SLA</div>
+            {shownMs.map(i=>(
+              <div key={i} style={{textAlign:'center',fontSize:isWide?11.5:10,fontWeight:months[i]?.isPartial?700:500,color:months[i]?.isPartial?'#1d5fb0':'#8b96a4',paddingBottom:3}}>
+                {months[i]?.abbr}
+              </div>
+            ))}
+            {distData.map(row=>(
+              <React.Fragment key={row.name}>
+                <div style={{display:'flex',alignItems:'center',gap:7,fontSize:isWide?12.5:11,fontWeight:700,color:'#3a4654'}}>
+                  <span style={{width:9,height:9,borderRadius:3,background:row.dot,flexShrink:0,display:'inline-block'}}/>
+                  {row.name}
+                </div>
+                {row.cells.map((c,ci)=>(
+                  <div key={ci} style={{height:isWide?44:38,borderRadius:8,background:c.bg,boxShadow:c.ring,
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    fontSize:isWide?14.5:12.5,fontWeight:700,color:c.color,fontVariantNumeric:'tabular-nums'}}>
+                    {c.v}
+                  </div>
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Trajectory quadrant */}
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,flexWrap:'wrap',margin:'0 0 11px'}}>
+        <div style={{fontSize:14,fontWeight:700}}>ทิศทางแนวโน้ม — ควรเข้าช่วยใครก่อน</div>
+        <div style={{fontSize:'clamp(9.5px,2.6vw,11.5px)',color:'#8b96a4'}}>จัดกลุ่มจากระดับล่าสุด × แนวโน้ม 3 เดือนล่าสุด</div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:14,marginBottom:22}}>
+        {groups.map(g=>(
+          <div key={g.key} style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'hidden'}}>
+            <div style={{background:g.headBg,padding:'13px 16px',borderBottom:'1px solid #eef1f4'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{fontSize:13.5,fontWeight:700,color:'#1b2430',marginRight:'auto'}}>{g.title}</div>
+                <div style={{fontSize:19,fontWeight:800,color:g.accent,fontVariantNumeric:'tabular-nums',lineHeight:1}}>{g.count}</div>
+              </div>
+              <div style={{fontSize:11,color:'#7a8593',marginTop:3}}>{g.desc}</div>
+            </div>
+            <div style={{padding:'5px 7px 8px'}}>
+              {g.list.map(d=>(
+                <div key={d.name} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 8px',borderRadius:8}}>
+                  <div style={{fontSize:12.5,fontWeight:600,color:'#1b2430',marginRight:'auto',minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name}</div>
+                  <div style={{fontSize:11,fontWeight:600,color:d.slColor,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap',minWidth:36,textAlign:'right'}}>{d.slArrow} {Math.abs(parseFloat(d.sl)).toFixed(1)}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:'#1b2430',fontVariantNumeric:'tabular-nums',minWidth:48,textAlign:'right'}}>{d.v}</div>
+                </div>
+              ))}
+              {g.moreText&&<div style={{fontSize:11,color:'#9aa3b0',padding:'5px 9px 2px'}}>{g.moreText}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Cause analysis */}
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,flexWrap:'wrap',margin:'0 0 11px'}}>
+        <div style={{fontSize:14,fontWeight:700}}>แยกที่มาของปัญหา — ฝั่งเราหรือฝั่งลูกค้า</div>
+        <div style={{fontSize:'clamp(9.5px,2.6vw,11.5px)',color:'#8b96a4'}}>เปรียบ "ทุกสาเหตุ → ตัดสาเหตุลูกค้า" · เดือนล่าสุด · หมวด {catName}</div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:14,marginBottom:22}}>
+        <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'hidden'}}>
+          <div style={{padding:'14px 16px',borderBottom:'1px solid #eef1f4'}}>
+            <div style={{fontSize:13.5,fontWeight:700}}>ส่วนใหญ่มาจากฝั่งลูกค้า</div>
+            <div style={{fontSize:11,color:'#7a8593',marginTop:3}}>ตัดสาเหตุลูกค้าแล้ว SLA ดีขึ้น {'>'} 3% — ควรประสานและปรับเงื่อนไขจัดส่ง</div>
+          </div>
+          <div style={{padding:'5px 7px 8px'}}>
+            {fromCust.length===0&&<div style={{padding:'16px 8px',fontSize:12,color:'#9aa3b0',textAlign:'center'}}>ไม่มี DC ในกลุ่มนี้</div>}
+            {fromCust.map(d=>(
+              <div key={d.name} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 8px',borderRadius:8}}>
+                <div style={{fontSize:12,fontWeight:600,color:'#1b2430',marginRight:'auto',minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name}</div>
+                <div style={{fontSize:11,color:'#9aa3b0',whiteSpace:'nowrap'}}>{fmt(d.allV)} → {fmt(d.exclV)}</div>
+                <div style={{fontSize:12,fontWeight:700,color:'#2e8a4a',fontVariantNumeric:'tabular-nums',minWidth:36,textAlign:'right'}}>+{d.gap.toFixed(1)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'hidden'}}>
+          <div style={{padding:'14px 16px',borderBottom:'1px solid #eef1f4'}}>
+            <div style={{fontSize:13.5,fontWeight:700}}>ปัญหาส่วนใหญ่มาจากภายใน</div>
+            <div style={{fontSize:11,color:'#7a8593',marginTop:3}}>แม้ตัดสาเหตุลูกค้าแล้ว SLA ยังต่ำ — ต้องแก้ที่กระบวนการจัดส่ง</div>
+          </div>
+          <div style={{padding:'5px 7px 8px'}}>
+            {internal.length===0&&<div style={{padding:'16px 8px',fontSize:12,color:'#9aa3b0',textAlign:'center'}}>ไม่มี DC ในกลุ่มนี้</div>}
+            {internal.map(d=>(
+              <div key={d.name} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 8px',borderRadius:8}}>
+                <div style={{fontSize:12,fontWeight:600,color:'#1b2430',marginRight:'auto',minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name}</div>
+                <div style={{fontSize:11,color:'#9aa3b0',whiteSpace:'nowrap'}}>{fmt(d.allV)} → {fmt(d.exclV)}</div>
+                <div style={{fontSize:12,fontWeight:700,color:'#dd5043',fontVariantNumeric:'tabular-nums',minWidth:36,textAlign:'right'}}>{fmt(d.exclV)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [tab, setTab] = useState('overview');
+  const [cat, setCat] = useState('total');
+  const [cause, setCause] = useState('all');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [expanded, setExpanded] = useState({});
+  const [dcFocus, setDcFocus] = useState(null);
+
+  const [isWide, setIsWide] = useState(window.innerWidth>=700);
+  useEffect(()=>{
+    const fn=()=>setIsWide(window.innerWidth>=700);
+    window.addEventListener('resize',fn);
+    return ()=>window.removeEventListener('resize',fn);
+  },[]);
+
+  const load = useCallback(async()=>{
+    setLoading(true); setError(null);
+    try {
+      const [r1,r2,r3] = await Promise.all([
+        fetch(csvUrl('AB')),fetch(csvUrl('CC')),fetch(csvUrl('AB+CC'))
+      ]);
+      if(!r1.ok||!r2.ok||!r3.ok) throw new Error('Google Sheets ตอบกลับ HTTP error — กรุณาตรวจสอบว่า Sheet เปิดเผยแพร่สาธารณะแล้ว');
+      const [t1,t2,t3] = await Promise.all([r1.text(),r2.text(),r3.text()]);
+      const ab=parseSheet(t1), cc=parseSheet(t2), abcc=parseSheet(t3);
+      if(!ab||!cc||!abcc) throw new Error('ไม่สามารถอ่านข้อมูลจาก Google Sheets ได้');
+      setData({ab,cc,abcc,months:abcc.months});
+    } catch(e) {
+      setError(e.message||'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    }
+    setLoading(false);
+  },[]);
+
+  useEffect(()=>{load();},[load]);
+
+  function handleSetTab(t) {
+    setTab(t);
+    if(t!=='dc') setDcFocus(null);
+  }
+
+
+
+  return (
+    <div style={{minHeight:'100vh',background:'#eef1f4'}}>
+      <Header tab={tab} setTab={handleSetTab} cat={cat} setCat={setCat}
+        cause={cause} setCause={setCause} isWide={isWide} months={data?.months}/>
+      <main style={{maxWidth:1200,margin:'0 auto',padding:'clamp(14px,4vw,20px) clamp(13px,4vw,20px) 56px'}}>
+        {loading&&(
+          <div style={{padding:'80px 0',textAlign:'center',color:'#8b96a4',fontSize:14}}>
+            <div style={{width:36,height:36,borderRadius:'50%',border:'3px solid #e1e6ec',borderTopColor:'#1d5fb0',animation:'spin 0.8s linear infinite',margin:'0 auto 16px'}}/>
+            กำลังโหลดข้อมูล SLA จาก Google Sheets…
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        )}
+        {!loading&&error&&(
+          <div style={{background:'#fff',border:'1px solid #f6d9d2',borderRadius:16,padding:'40px 28px',textAlign:'center',maxWidth:600,margin:'40px auto'}}>
+            <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
+            <div style={{fontSize:16,fontWeight:700,marginBottom:8,color:'#dd5043'}}>ไม่สามารถโหลดข้อมูลได้</div>
+            <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>
+              {error}<br/>
+              <strong>กรุณาตรวจสอบ:</strong> Google Sheet ต้องตั้งค่าเป็น "ทุกคนที่มีลิงก์สามารถดูได้"
+            </div>
+            <button onClick={load} style={{padding:'10px 24px',background:'#1d5fb0',color:'#fff',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+              ลองใหม่
+            </button>
+          </div>
+        )}
+        {!loading&&!error&&data&&(
+          <>
+            {tab==='overview'&&<OverviewTab data={data} isWide={isWide} setTab={handleSetTab} setCat={setCat} setDcFocus={d=>{setDcFocus(d);setTab('dc');}}/>}
+            {tab==='region'&&<RegionTab data={data} cat={cat} cause={cause} isWide={isWide} expanded={expanded} setExpanded={setExpanded}/>}
+            {tab==='dc'&&<DCTab data={data} cat={cat} cause={cause} isWide={isWide} dcFocus={dcFocus}/>}
+            {tab==='analysis'&&<AnalysisTab data={data} cat={cat} cause={cause} isWide={isWide}/>}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
