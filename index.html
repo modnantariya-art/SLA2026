@@ -105,45 +105,19 @@ async function fetchSheetPubCsv(sheet) {
 }
 
 function parseGVizTable(table) {
-  if (!table || !table.rows || !table.cols) return null;
-  const rows = table.rows;
-  if (rows.length < 3) return null;
-  const cellStr = (row, i) => { const c = (row.c||[])[i]; return c && c.v != null ? String(c.v) : ''; };
-  const cellNum = (row, i) => { const c = (row.c||[])[i]; if (!c || c.v == null) return null; const n = Number(c.v); return isNaN(n) ? null : n; };
-  const isMonth = s => /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d)/i.test((s||'').trim());
-  let monthRowIdx = -1;
-  for (let i = 0; i < Math.min(8, rows.length); i++) {
-    if (cellStr(rows[i], 0).trim() === 'DC' && isMonth(cellStr(rows[i], 1))) { monthRowIdx = i; break; }
-  }
-  if (monthRowIdx === -1) return null;
-  const hdr = rows[monthRowIdx];
-  const months = [], colBase = [];
-  for (let c = 1; c < (hdr.c||[]).length; c++) {
-    const v = cellStr(hdr, c);
-    if (v && isMonth(v)) { months.push(parseMonthLabel(v)); colBase.push(c); }
-  }
-  if (!months.length) return null;
-  const isDcName = s => /^(DC|CDC)\s/.test((s||'').trim());
-  const dcs = []; let seenDc = false;
-  for (let i = monthRowIdx + 1; i < rows.length; i++) {
-    const row = rows[i], name = cellStr(row, 0).trim();
-    if (!name) continue;
-    if (!seenDc && !isDcName(name)) continue;
-    seenDc = true;
-    if (!isDcName(name)) continue;
-    const all = [], excl = [];
-    for (let m = 0; m < months.length; m++) { all.push(cellNum(row, colBase[m])); excl.push(cellNum(row, colBase[m]+1)); }
-    dcs.push({ name, region: DC_REGION[name]||'unknown', all, excl });
-  }
-  const sample = dcs.flatMap(d=>d.all).filter(v=>v!==null).slice(0,10);
-  const isFraction = sample.length > 0 && sample.every(v => v <= 1.5);
-  if (isFraction) {
-    dcs.forEach(dc => {
-      dc.all  = dc.all.map(v  => v  !== null ? Math.round(v*10000)/100 : null);
-      dc.excl = dc.excl.map(v => v !== null ? Math.round(v*10000)/100 : null);
-    });
-  }
-  return { months, dcs };
+  if (!table || !table.rows) return null;
+  // Convert gviz rows → CSV text using formatted value (f) when available,
+  // falling back to raw value (v). This handles typed columns where gviz stores
+  // header text as f:"Jan" but v:null because the column is typed as NUMBER.
+  const csv = table.rows.map(row => {
+    return (row.c || []).map(cell => {
+      if (!cell || (cell.v == null && cell.f == null)) return '';
+      const val = cell.f != null ? String(cell.f) : String(cell.v);
+      return val.includes(',') || val.includes('"') || val.includes('\n')
+        ? '"' + val.replace(/"/g, '""') + '"' : val;
+    }).join(',');
+  }).join('\n');
+  return parseSheet(csv);
 }
 
 const REGIONS = [
@@ -1177,7 +1151,11 @@ function App() {
       // Race: gviz JSONP (works for "Anyone with link") vs pub CSV (works after Publish to web)
       // Whichever resolves first wins; both run in parallel
       const fetchOne = (sheet) => promiseAny([
-        fetchSheetJsonP(sheet).then(t => parseGVizTable(t)),
+        fetchSheetJsonP(sheet).then(t => {
+          const p = parseGVizTable(t);
+          if (!p) throw new Error('gviz-parse:' + sheet);
+          return p;
+        }),
         fetchSheetPubCsv(sheet)
       ]);
       const [ab,cc,abcc] = await Promise.all([fetchOne('AB'),fetchOne('CC'),fetchOne('AB+CC')]);
