@@ -1059,12 +1059,17 @@ function App() {
     setLoading(true); setError(null);
     try {
       const [r1,r2,r3] = await Promise.all([
-        fetch(csvUrl('AB')),fetch(csvUrl('CC')),fetch(csvUrl('AB+CC'))
+        fetch(csvUrl('AB'),{credentials:'omit'}),
+        fetch(csvUrl('CC'),{credentials:'omit'}),
+        fetch(csvUrl('AB+CC'),{credentials:'omit'})
       ]);
-      if(!r1.ok||!r2.ok||!r3.ok) throw new Error('Google Sheets ตอบกลับ HTTP error — กรุณาตรวจสอบว่า Sheet เปิดเผยแพร่สาธารณะแล้ว');
       const [t1,t2,t3] = await Promise.all([r1.text(),r2.text(),r3.text()]);
+      // Detect HTML response (login page) instead of CSV
+      if([t1,t2,t3].some(t=>t.trimStart().startsWith('<')))
+        throw new Error('__HTML__');
       const ab=parseSheet(t1), cc=parseSheet(t2), abcc=parseSheet(t3);
-      if(!ab||!cc||!abcc) throw new Error('ไม่สามารถอ่านข้อมูลจาก Google Sheets ได้');
+      if(!ab||!cc||!abcc) throw new Error('__PARSE__:'+[t1,t2,t3].map(t=>t.slice(0,80)).join(' | '));
+      setData({ab,cc,abcc,months:abcc.months});
       setData({ab,cc,abcc,months:abcc.months});
     } catch(e) {
       setError(e.message||'เกิดข้อผิดพลาดในการโหลดข้อมูล');
@@ -1094,14 +1099,28 @@ function App() {
           </div>
         )}
         {!loading&&error&&(
-          <div style={{background:'#fff',border:'1px solid #f6d9d2',borderRadius:16,padding:'40px 28px',textAlign:'center',maxWidth:600,margin:'40px auto'}}>
+          <div style={{background:'#fff',border:'1px solid #f6d9d2',borderRadius:16,padding:'40px 28px',textAlign:'center',maxWidth:620,margin:'40px auto'}}>
             <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
-            <div style={{fontSize:16,fontWeight:700,marginBottom:8,color:'#dd5043'}}>ไม่สามารถโหลดข้อมูลได้</div>
-            <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>
-              {error}<br/>
-              <strong>กรุณาตรวจสอบ:</strong> Google Sheet ต้องตั้งค่าเป็น "ทุกคนที่มีลิงก์สามารถดูได้"
-            </div>
-            <button onClick={load} style={{padding:'10px 24px',background:'#1d5fb0',color:'#fff',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+            <div style={{fontSize:16,fontWeight:700,marginBottom:12,color:'#dd5043'}}>ไม่สามารถโหลดข้อมูลได้</div>
+            {error==='__HTML__' ? (
+              <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.8,marginBottom:20,textAlign:'left',background:'#f9fafb',borderRadius:10,padding:'16px 20px'}}>
+                <div style={{fontWeight:700,color:'#1b2430',marginBottom:8}}>Google Sheets ส่งหน้า Login กลับมาแทน CSV</div>
+                <div style={{marginBottom:4}}>ต้องเผยแพร่ Sheet ให้เป็นสาธารณะก่อน:</div>
+                <ol style={{margin:'8px 0 0 18px',padding:0,lineHeight:2}}>
+                  <li>เปิด Google Sheets → <strong>ไฟล์</strong></li>
+                  <li>เลือก <strong>แชร์</strong> → <strong>เผยแพร่ไปยังเว็บ</strong></li>
+                  <li>เลือก <strong>ชีต: AB</strong> → คลิก <strong>เผยแพร่</strong> → ยืนยัน</li>
+                  <li>ทำซ้ำสำหรับชีต <strong>CC</strong> และ <strong>AB+CC</strong></li>
+                  <li>กลับมาที่หน้านี้และกด <strong>ลองใหม่</strong></li>
+                </ol>
+              </div>
+            ) : (
+              <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>
+                {error.startsWith('__PARSE__') ? 'อ่านโครงสร้าง CSV ไม่ได้ — ตรวจสอบว่าชื่อชีตคือ AB, CC, AB+CC' : error}
+                {!error.startsWith('__PARSE__') && <><br/><strong>กรุณาตรวจสอบ:</strong> Google Sheet ต้องตั้งค่าเป็น "ทุกคนที่มีลิงก์สามารถดูได้"</>}
+              </div>
+            )}
+            <button onClick={load} style={{padding:'10px 24px',background:'#1d5fb0',color:'#fff',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:14,fontWeight:600,cursor:'pointer',marginTop:4}}>
               ลองใหม่
             </button>
           </div>
