@@ -27,8 +27,69 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const SHEET_ID = '1z0g24oCmyua1bzN1LlXiG3Bu6ydB5_2-e1ax72AtOUA';
-const csvUrl = (sheet) =>
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+
+// JSONP loader — bypasses CORS; works with "Anyone with the link" sharing
+function fetchSheetJsonP(sheet) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_gviz_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const el = document.createElement('script');
+    const cleanup = () => { delete window[cbName]; el.parentNode && el.parentNode.removeChild(el); };
+    const timer = setTimeout(() => { cleanup(); reject(new Error('__TIMEOUT__:' + sheet)); }, 15000);
+    window[cbName] = (resp) => {
+      clearTimeout(timer); cleanup();
+      if (resp && resp.status === 'ok') { resolve(resp.table); }
+      else {
+        const msg = (resp && resp.errors || []).map(e => e.detailed_message || e.message).join('; ') || 'access denied';
+        reject(new Error('__ACCESS__:' + sheet + ':' + msg));
+      }
+    };
+    el.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('__SCRIPT__:' + sheet)); };
+    el.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheet)}&headers=0&callback=${cbName}`;
+    document.head.appendChild(el);
+  });
+}
+
+function parseGVizTable(table) {
+  if (!table || !table.rows || !table.cols) return null;
+  const rows = table.rows;
+  if (rows.length < 3) return null;
+  const cellStr = (row, i) => { const c = (row.c||[])[i]; return c && c.v != null ? String(c.v) : ''; };
+  const cellNum = (row, i) => { const c = (row.c||[])[i]; if (!c || c.v == null) return null; const n = Number(c.v); return isNaN(n) ? null : n; };
+  const isMonth = s => /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d)/i.test((s||'').trim());
+  let monthRowIdx = -1;
+  for (let i = 0; i < Math.min(8, rows.length); i++) {
+    if (cellStr(rows[i], 0).trim() === 'DC' && isMonth(cellStr(rows[i], 1))) { monthRowIdx = i; break; }
+  }
+  if (monthRowIdx === -1) return null;
+  const hdr = rows[monthRowIdx];
+  const months = [], colBase = [];
+  for (let c = 1; c < (hdr.c||[]).length; c++) {
+    const v = cellStr(hdr, c);
+    if (v && isMonth(v)) { months.push(parseMonthLabel(v)); colBase.push(c); }
+  }
+  if (!months.length) return null;
+  const isDcName = s => /^(DC|CDC)\s/.test((s||'').trim());
+  const dcs = []; let seenDc = false;
+  for (let i = monthRowIdx + 1; i < rows.length; i++) {
+    const row = rows[i], name = cellStr(row, 0).trim();
+    if (!name) continue;
+    if (!seenDc && !isDcName(name)) continue;
+    seenDc = true;
+    if (!isDcName(name)) continue;
+    const all = [], excl = [];
+    for (let m = 0; m < months.length; m++) { all.push(cellNum(row, colBase[m])); excl.push(cellNum(row, colBase[m]+1)); }
+    dcs.push({ name, region: DC_REGION[name]||'unknown', all, excl });
+  }
+  const sample = dcs.flatMap(d=>d.all).filter(v=>v!==null).slice(0,10);
+  const isFraction = sample.length > 0 && sample.every(v => v <= 1.5);
+  if (isFraction) {
+    dcs.forEach(dc => {
+      dc.all  = dc.all.map(v  => v  !== null ? Math.round(v*10000)/100 : null);
+      dc.excl = dc.excl.map(v => v !== null ? Math.round(v*10000)/100 : null);
+    });
+  }
+  return { months, dcs };
+}
 
 const REGIONS = [
   { id:'north',     name:'ภาคเหนือ',      short:'เหนือ' },
@@ -1058,18 +1119,13 @@ function App() {
   const load = useCallback(async()=>{
     setLoading(true); setError(null);
     try {
-      const [r1,r2,r3] = await Promise.all([
-        fetch(csvUrl('AB'),{credentials:'omit'}),
-        fetch(csvUrl('CC'),{credentials:'omit'}),
-        fetch(csvUrl('AB+CC'),{credentials:'omit'})
+      const [t1,t2,t3] = await Promise.all([
+        fetchSheetJsonP('AB'),
+        fetchSheetJsonP('CC'),
+        fetchSheetJsonP('AB+CC')
       ]);
-      const [t1,t2,t3] = await Promise.all([r1.text(),r2.text(),r3.text()]);
-      // Detect HTML response (login page) instead of CSV
-      if([t1,t2,t3].some(t=>t.trimStart().startsWith('<')))
-        throw new Error('__HTML__');
-      const ab=parseSheet(t1), cc=parseSheet(t2), abcc=parseSheet(t3);
-      if(!ab||!cc||!abcc) throw new Error('__PARSE__:'+[t1,t2,t3].map(t=>t.slice(0,80)).join(' | '));
-      setData({ab,cc,abcc,months:abcc.months});
+      const ab=parseGVizTable(t1), cc=parseGVizTable(t2), abcc=parseGVizTable(t3);
+      if(!ab||!cc||!abcc) throw new Error('__PARSE__');
       setData({ab,cc,abcc,months:abcc.months});
     } catch(e) {
       setError(e.message||'เกิดข้อผิดพลาดในการโหลดข้อมูล');
@@ -1102,23 +1158,24 @@ function App() {
           <div style={{background:'#fff',border:'1px solid #f6d9d2',borderRadius:16,padding:'40px 28px',textAlign:'center',maxWidth:620,margin:'40px auto'}}>
             <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
             <div style={{fontSize:16,fontWeight:700,marginBottom:12,color:'#dd5043'}}>ไม่สามารถโหลดข้อมูลได้</div>
-            {error==='__HTML__' ? (
+            {(error.startsWith('__ACCESS__')||error.startsWith('__SCRIPT__')||error.startsWith('__TIMEOUT__')) ? (
               <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.8,marginBottom:20,textAlign:'left',background:'#f9fafb',borderRadius:10,padding:'16px 20px'}}>
-                <div style={{fontWeight:700,color:'#1b2430',marginBottom:8}}>Google Sheets ส่งหน้า Login กลับมาแทน CSV</div>
-                <div style={{marginBottom:4}}>ต้องเผยแพร่ Sheet ให้เป็นสาธารณะก่อน:</div>
+                <div style={{fontWeight:700,color:'#1b2430',marginBottom:8}}>Google Sheets ยังไม่เปิดให้เข้าถึงสาธารณะ</div>
+                <div style={{marginBottom:4}}>กรุณาตั้งค่าการแชร์ก่อน:</div>
                 <ol style={{margin:'8px 0 0 18px',padding:0,lineHeight:2}}>
-                  <li>เปิด Google Sheets → <strong>ไฟล์</strong></li>
-                  <li>เลือก <strong>แชร์</strong> → <strong>เผยแพร่ไปยังเว็บ</strong></li>
-                  <li>เลือก <strong>ชีต: AB</strong> → คลิก <strong>เผยแพร่</strong> → ยืนยัน</li>
-                  <li>ทำซ้ำสำหรับชีต <strong>CC</strong> และ <strong>AB+CC</strong></li>
+                  <li>เปิด Google Sheets → คลิก <strong>แชร์</strong> (มุมขวาบน)</li>
+                  <li>เปลี่ยนการเข้าถึงเป็น <strong>"ทุกคนที่มีลิงก์"</strong> → <strong>ผู้ดู</strong></li>
+                  <li>คลิก <strong>เสร็จสิ้น</strong></li>
                   <li>กลับมาที่หน้านี้และกด <strong>ลองใหม่</strong></li>
                 </ol>
+                <div style={{marginTop:8,fontSize:12,color:'#aab4be'}}>ข้อผิดพลาด: {error}</div>
+              </div>
+            ) : error.startsWith('__PARSE__') ? (
+              <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>
+                อ่านโครงสร้างข้อมูลไม่ได้ — ตรวจสอบว่าชื่อชีตคือ <strong>AB</strong>, <strong>CC</strong>, <strong>AB+CC</strong>
               </div>
             ) : (
-              <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>
-                {error.startsWith('__PARSE__') ? 'อ่านโครงสร้าง CSV ไม่ได้ — ตรวจสอบว่าชื่อชีตคือ AB, CC, AB+CC' : error}
-                {!error.startsWith('__PARSE__') && <><br/><strong>กรุณาตรวจสอบ:</strong> Google Sheet ต้องตั้งค่าเป็น "ทุกคนที่มีลิงก์สามารถดูได้"</>}
-              </div>
+              <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>{error}</div>
             )}
             <button onClick={load} style={{padding:'10px 24px',background:'#1d5fb0',color:'#fff',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:14,fontWeight:600,cursor:'pointer',marginTop:4}}>
               ลองใหม่
