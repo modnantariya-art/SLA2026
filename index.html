@@ -88,9 +88,14 @@ function fetchSheetJsonP(sheet) {
   });
 }
 
-// ── Method B: Published CSV fetch — works after "File → Share → Publish to web" ─
+// ── Method B: Published CSV fetch — uses hardcoded publish ID + GIDs ─────────
+const PUB_ID = '2PACX-1vR7DJfYHleowvSMfrW_J72TWW9SSWTwbQv-wLr4DGUXoL5X9ncJGiTpdQsXPhSHdAUTEmEovL-TdQex';
+const PUB_GIDS = { 'AB': '713489536', 'CC': '866530577', 'AB+CC': '563246109' };
+
 async function fetchSheetPubCsv(sheet) {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?output=csv&sheet=${encodeURIComponent(sheet)}`;
+  const gid = PUB_GIDS[sheet];
+  if (!gid) throw new Error('unknown-sheet:' + sheet);
+  const url = `https://docs.google.com/spreadsheets/d/e/${PUB_ID}/pub?output=csv&gid=${gid}&single=true`;
   const r = await fetch(url, {credentials:'omit'});
   const text = await r.text();
   if (text.trimStart().startsWith('<')) throw new Error('not-published:' + sheet);
