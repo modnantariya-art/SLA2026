@@ -95,31 +95,60 @@ function parseMonthLabel(raw) {
 
 function parseSheet(text) {
   const lines = text.replace(/\r/g,'').split('\n').filter(l => l.trim());
-  if (lines.length < 4) return null;
-  const row1 = parseRow(lines[1]); // month headers
-  const months = [];
-  const colBase = [];
+  if (lines.length < 3) return null;
+
+  // Find the month-header row: first field is 'DC' and second field looks like a month
+  const isMonth = s => /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d)/i.test((s||'').trim());
+  let monthRowIdx = -1;
+  for (let i = 0; i < Math.min(6, lines.length); i++) {
+    const r = parseRow(lines[i]);
+    if ((r[0]||'').trim() === 'DC' && isMonth(r[1])) { monthRowIdx = i; break; }
+  }
+  if (monthRowIdx === -1) return null;
+
+  const row1 = parseRow(lines[monthRowIdx]);
+  const months = [], colBase = [];
   for (let c = 1; c < row1.length; c++) {
-    if (row1[c] && row1[c] !== '') {
-      months.push(parseMonthLabel(row1[c]));
+    const cell = (row1[c]||'').trim();
+    if (cell && isMonth(cell)) {
+      months.push(parseMonthLabel(cell));
       colBase.push(c);
     }
   }
+  if (!months.length) return null;
+
+  // DC rows: start after monthRow, skip non-DC lines (metric headers etc.)
+  const isDcName = s => /^(DC|CDC)\s/.test((s||'').trim());
   const dcs = [];
-  for (let i = 3; i < lines.length; i++) {
+  let seenDc = false;
+  for (let i = monthRowIdx + 1; i < lines.length; i++) {
     const row = parseRow(lines[i]);
-    const name = row[0];
+    const name = (row[0]||'').trim();
     if (!name) continue;
+    if (!seenDc && !isDcName(name)) continue; // skip header fragments
+    seenDc = true;
+    if (!isDcName(name)) continue; // stop if non-DC after data started (e.g. totals row)
     const all = [], excl = [];
     for (let m = 0; m < months.length; m++) {
       const b = colBase[m];
-      const av = parseFloat(row[b]);
-      const ev = parseFloat(row[b+1]);
-      all.push(isNaN(av)||row[b]==='' ? null : av);
-      excl.push(isNaN(ev)||row[b+1]==='' ? null : ev);
+      const ra = (row[b]||'').trim(), re = (row[b+1]||'').trim();
+      const av = parseFloat(ra), ev = parseFloat(re);
+      all.push(isNaN(av)||ra==='' ? null : av);
+      excl.push(isNaN(ev)||re==='' ? null : ev);
     }
     dcs.push({ name, region: DC_REGION[name]||'unknown', all, excl });
   }
+
+  // Auto-detect fraction vs percentage: if values look like 0–1, multiply by 100
+  const sample = dcs.flatMap(d=>d.all).filter(v=>v!==null).slice(0,10);
+  const isFraction = sample.length > 0 && sample.every(v => v <= 1.5);
+  if (isFraction) {
+    dcs.forEach(dc => {
+      dc.all  = dc.all.map(v  => v  !== null ? Math.round(v*10000)/100 : null);
+      dc.excl = dc.excl.map(v => v !== null ? Math.round(v*10000)/100 : null);
+    });
+  }
+
   return { months, dcs };
 }
 
