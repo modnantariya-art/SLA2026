@@ -28,25 +28,75 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
 // ── Config ───────────────────────────────────────────────────────────────────
 const SHEET_ID = '1z0g24oCmyua1bzN1LlXiG3Bu6ydB5_2-e1ax72AtOUA';
 
-// JSONP loader — bypasses CORS; works with "Anyone with the link" sharing
-function fetchSheetJsonP(sheet) {
+// Race two methods — first success wins, no waiting for the slower one
+function promiseAny(promises) {
   return new Promise((resolve, reject) => {
-    const cbName = '_gviz_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    let remaining = promises.length;
+    const errors = [];
+    if (!remaining) return reject(new Error('empty'));
+    promises.forEach((p, i) => {
+      Promise.resolve(p).then(resolve, e => {
+        errors[i] = e;
+        if (--remaining === 0) reject(new Error(errors.map(e=>e&&e.message||String(e)).join(' | ')));
+      });
+    });
+  });
+}
+
+// ── Method A: gviz JSONP — works when sheet is "Anyone with the link" ────────
+const _gvizPending = {};
+let _gvizIntercepted = false, _gvizReqId = 0;
+
+function ensureGvizInterceptor() {
+  if (_gvizIntercepted) return;
+  _gvizIntercepted = true;
+  window.google = window.google || {};
+  window.google.visualization = window.google.visualization || {};
+  window.google.visualization.Query = window.google.visualization.Query || {};
+  window.google.visualization.Query.setResponse = (resp) => {
+    const cb = _gvizPending[resp && resp.reqId];
+    if (cb) { delete _gvizPending[resp.reqId]; cb(resp); }
+  };
+}
+
+function fetchSheetJsonP(sheet) {
+  ensureGvizInterceptor();
+  const reqId = _gvizReqId++;
+  const cbName = '_gvizCb' + reqId;
+  return new Promise((resolve, reject) => {
     const el = document.createElement('script');
-    const cleanup = () => { delete window[cbName]; el.parentNode && el.parentNode.removeChild(el); };
-    const timer = setTimeout(() => { cleanup(); reject(new Error('__TIMEOUT__:' + sheet)); }, 15000);
-    window[cbName] = (resp) => {
-      clearTimeout(timer); cleanup();
-      if (resp && resp.status === 'ok') { resolve(resp.table); }
+    const handleResp = (resp) => {
+      clearTimeout(timer); delete window[cbName]; el.parentNode && el.parentNode.removeChild(el);
+      if (resp && resp.status === 'ok') resolve(resp.table);
       else {
-        const msg = (resp && resp.errors || []).map(e => e.detailed_message || e.message).join('; ') || 'access denied';
+        const msg = ((resp && resp.errors) || []).map(e => e.detailed_message || e.message).join('; ') || 'access denied';
         reject(new Error('__ACCESS__:' + sheet + ':' + msg));
       }
     };
-    el.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('__SCRIPT__:' + sheet)); };
-    el.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;reqId:0;handler:${cbName}&sheet=${encodeURIComponent(sheet)}&headers=0`;
+    _gvizPending[reqId] = handleResp;
+    window[cbName] = handleResp;
+    const timer = setTimeout(() => {
+      delete _gvizPending[reqId]; delete window[cbName]; el.parentNode && el.parentNode.removeChild(el);
+      reject(new Error('__TIMEOUT__:' + sheet));
+    }, 12000);
+    el.onerror = () => {
+      clearTimeout(timer); delete _gvizPending[reqId]; delete window[cbName];
+      reject(new Error('__SCRIPT__:' + sheet));
+    };
+    el.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;reqId:${reqId};handler:${cbName}&sheet=${encodeURIComponent(sheet)}&headers=0`;
     document.head.appendChild(el);
   });
+}
+
+// ── Method B: Published CSV fetch — works after "File → Share → Publish to web" ─
+async function fetchSheetPubCsv(sheet) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?output=csv&sheet=${encodeURIComponent(sheet)}`;
+  const r = await fetch(url, {credentials:'omit'});
+  const text = await r.text();
+  if (text.trimStart().startsWith('<')) throw new Error('not-published:' + sheet);
+  const parsed = parseSheet(text);
+  if (!parsed) throw new Error('parse-failed:' + sheet);
+  return parsed;
 }
 
 function parseGVizTable(table) {
@@ -1119,12 +1169,13 @@ function App() {
   const load = useCallback(async()=>{
     setLoading(true); setError(null);
     try {
-      const [t1,t2,t3] = await Promise.all([
-        fetchSheetJsonP('AB'),
-        fetchSheetJsonP('CC'),
-        fetchSheetJsonP('AB+CC')
+      // Race: gviz JSONP (works for "Anyone with link") vs pub CSV (works after Publish to web)
+      // Whichever resolves first wins; both run in parallel
+      const fetchOne = (sheet) => promiseAny([
+        fetchSheetJsonP(sheet).then(t => parseGVizTable(t)),
+        fetchSheetPubCsv(sheet)
       ]);
-      const ab=parseGVizTable(t1), cc=parseGVizTable(t2), abcc=parseGVizTable(t3);
+      const [ab,cc,abcc] = await Promise.all([fetchOne('AB'),fetchOne('CC'),fetchOne('AB+CC')]);
       if(!ab||!cc||!abcc) throw new Error('__PARSE__');
       setData({ab,cc,abcc,months:abcc.months});
     } catch(e) {
@@ -1158,17 +1209,22 @@ function App() {
           <div style={{background:'#fff',border:'1px solid #f6d9d2',borderRadius:16,padding:'40px 28px',textAlign:'center',maxWidth:620,margin:'40px auto'}}>
             <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
             <div style={{fontSize:16,fontWeight:700,marginBottom:12,color:'#dd5043'}}>ไม่สามารถโหลดข้อมูลได้</div>
-            {(error.startsWith('__ACCESS__')||error.startsWith('__SCRIPT__')||error.startsWith('__TIMEOUT__')) ? (
+            {(error.includes('__TIMEOUT__')||error.includes('__ACCESS__')||error.includes('__SCRIPT__')||error.includes('not-published')) ? (
               <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.8,marginBottom:20,textAlign:'left',background:'#f9fafb',borderRadius:10,padding:'16px 20px'}}>
-                <div style={{fontWeight:700,color:'#1b2430',marginBottom:8}}>Google Sheets ยังไม่เปิดให้เข้าถึงสาธารณะ</div>
-                <div style={{marginBottom:4}}>กรุณาตั้งค่าการแชร์ก่อน:</div>
-                <ol style={{margin:'8px 0 0 18px',padding:0,lineHeight:2}}>
-                  <li>เปิด Google Sheets → คลิก <strong>แชร์</strong> (มุมขวาบน)</li>
-                  <li>เปลี่ยนการเข้าถึงเป็น <strong>"ทุกคนที่มีลิงก์"</strong> → <strong>ผู้ดู</strong></li>
-                  <li>คลิก <strong>เสร็จสิ้น</strong></li>
-                  <li>กลับมาที่หน้านี้และกด <strong>ลองใหม่</strong></li>
+                <div style={{fontWeight:700,color:'#1b2430',marginBottom:10}}>ไม่สามารถเข้าถึง Google Sheets ได้ — ต้องทำ 1 ใน 2 วิธีนี้</div>
+                <div style={{marginBottom:6,fontWeight:600,color:'#3a4654'}}>วิธีที่ 1 (แนะนำ): เผยแพร่ไปยังเว็บ</div>
+                <ol style={{margin:'0 0 12px 18px',padding:0,lineHeight:2}}>
+                  <li>เปิด Google Sheets → <strong>ไฟล์</strong> → <strong>แชร์</strong> → <strong>เผยแพร่ไปยังเว็บ</strong></li>
+                  <li>เลือก <strong>ชีต: AB</strong>, ฟอร์แมต <strong>เว็บเพจ</strong> → คลิก <strong>เผยแพร่</strong></li>
+                  <li>ทำซ้ำสำหรับชีต <strong>CC</strong> และ <strong>AB+CC</strong></li>
+                  <li>กลับมากด <strong>ลองใหม่</strong></li>
                 </ol>
-                <div style={{marginTop:8,fontSize:12,color:'#aab4be'}}>ข้อผิดพลาด: {error}</div>
+                <div style={{marginBottom:6,fontWeight:600,color:'#3a4654'}}>วิธีที่ 2: ตั้งค่าแชร์ให้สาธารณะ</div>
+                <ol style={{margin:'0 0 8px 18px',padding:0,lineHeight:2}}>
+                  <li>คลิก <strong>แชร์</strong> (มุมขวาบน) → เปลี่ยนเป็น <strong>"ทุกคนบนอินเทอร์เน็ต"</strong> (ไม่ใช่แค่ในองค์กร)</li>
+                  <li>กลับมากด <strong>ลองใหม่</strong></li>
+                </ol>
+                <div style={{marginTop:8,fontSize:11,color:'#aab4be'}}>รหัสข้อผิดพลาด: {error.slice(0,60)}</div>
               </div>
             ) : error.startsWith('__PARSE__') ? (
               <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>
