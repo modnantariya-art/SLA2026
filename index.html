@@ -44,7 +44,7 @@ function fetchSheetJsonP(sheet) {
       }
     };
     el.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('__SCRIPT__:' + sheet)); };
-    el.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheet)}&headers=0&callback=${cbName}`;
+    el.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;reqId:0;handler:${cbName}&sheet=${encodeURIComponent(sheet)}&headers=0`;
     document.head.appendChild(el);
   });
 }
