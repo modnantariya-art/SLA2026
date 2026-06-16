@@ -281,46 +281,74 @@ function fmtDelta(now,prev) {
 function chipActive() {return {background:'#fff',color:'#1b2430',boxShadow:'0 1px 4px rgba(0,0,0,.12)'};}
 function chipInactive() {return {background:'transparent',color:'#5f6b7a',boxShadow:'none'};}
 
-// ── Trend Chart (SVG) ────────────────────────────────────────────────────────
-function TrendChart({values, months, title, subtitle}) {
-  const valid = values.filter(v=>v!==null);
-  if (!valid.length) return null;
-  const W=400, H=140, pl=40, pr=10, pt=10, pb=24;
-  const w=W-pl-pr, h=H-pt-pb, n=values.length;
-  const mn=Math.max(0,Math.min(...valid)-4), mx=Math.max(...valid)+4, rng=mx-mn||1;
-  const cx=i=>pl+(i/(n-1))*w, cy=v=>pt+h-((v-mn)/rng)*h;
-  let path=''; let first=true;
-  for (let i=0;i<n;i++){
-    if(values[i]===null){first=true;continue;}
-    path+=first?`M${cx(i).toFixed(1)},${cy(values[i]).toFixed(1)}`:`L${cx(i).toFixed(1)},${cy(values[i]).toFixed(1)}`;
-    first=false;
-  }
+// ── Trend Chart (SVG) — bars for "all", line for "excl" ─────────────────────
+function TrendChart({all, excl, months, title, subtitle}) {
+  const validAll = all.filter(v=>v!==null);
+  if (!validAll.length) return null;
+  const validExcl = (excl||[]).filter(v=>v!==null);
+  const allVals = [...validAll, ...validExcl];
+  const W=720, H=200, padX=20, padBot=30, plotTop=36, plotBot=H-padBot;
+  const plotH=plotBot-plotTop;
+  const lo=Math.max(0,Math.min(...allVals)-3), hi=Math.max(...allVals)+3, span=hi-lo||1;
+  const n=all.length, slot=(W-2*padX)/n, barW=Math.min(54,slot*0.55);
+  const cx=i=>padX+slot*i+slot/2;
+  const yFor=v=>v==null?null:plotBot-((Math.max(lo,Math.min(hi,v))-lo)/span)*plotH;
   const ticks=[];
-  for(let v=Math.ceil(mn/10)*10;v<=mx;v+=10) ticks.push(v);
+  for(let v=Math.ceil(lo/10)*10;v<=hi;v+=10) ticks.push(v);
+  // find min/max index in all
+  let maxIdx=-1,minIdx=-1;
+  all.forEach((v,i)=>{if(v==null)return;if(maxIdx<0||v>all[maxIdx])maxIdx=i;if(minIdx<0||v<all[minIdx])minIdx=i;});
+  // excl polyline
+  const pts=(excl||[]).map((v,i)=>{const y=yFor(v);return y==null?null:cx(i)+','+y;}).filter(Boolean).join(' ');
   return (
     <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'16px 18px 10px'}}>
-      {title&&<div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{title}</div>}
-      {subtitle&&<div style={{fontSize:11.5,color:'#8b96a4',marginBottom:8}}>{subtitle}</div>}
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,marginBottom:4,flexWrap:'wrap'}}>
+        {title&&<div style={{fontSize:14,fontWeight:700}}>{title}</div>}
+        <div style={{display:'flex',alignItems:'center',gap:12,fontSize:9.5,color:'#8b96a4'}}>
+          <span style={{display:'flex',alignItems:'center',gap:4}}>
+            <span style={{width:12,height:8,borderRadius:2,background:'#cfddf1',display:'inline-block'}}/>ทุกสาเหตุ
+          </span>
+          <span style={{display:'flex',alignItems:'center',gap:4}}>
+            <span style={{width:14,height:0,borderTop:'2.5px solid #1b2430',display:'inline-block'}}/>ตัดสาเหตุลูกค้า
+          </span>
+        </div>
+      </div>
+      {subtitle&&<div style={{fontSize:11.5,color:'#9aa3b0',marginBottom:4}}>{subtitle}</div>}
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',display:'block',overflow:'visible'}}>
         {ticks.map(t=>(
           <g key={t}>
-            <line x1={pl} y1={cy(t)} x2={pl+w} y2={cy(t)} stroke="#f0f3f6" strokeWidth="1"/>
-            <text x={pl-5} y={cy(t)+3.5} textAnchor="end" fontSize="9.5" fill="#b0b8c4">{t}</text>
+            <line x1={padX} y1={yFor(t)} x2={W-padX} y2={yFor(t)} stroke="#f0f3f6" strokeWidth="1"/>
+            <text x={padX-4} y={yFor(t)+3.5} textAnchor="end" fontSize="11" fill="#b0b8c4">{t}</text>
           </g>
         ))}
-        {values.map((v,i)=>(
-          <text key={i} x={cx(i)} y={H-5} textAnchor="middle" fontSize="10"
-            fill={months[i]?.isPartial?'#1d5fb0':'#b0b8c4'}>{months[i]?.abbr||''}</text>
+        {/* bars for "all" */}
+        {all.map((v,i)=>{
+          const y=yFor(v); if(y==null)return null;
+          const fill=i===minIdx?'#dd5043':i===maxIdx?'#1d5fb0':'#cfddf1';
+          const tc=(i===minIdx||i===maxIdx)?'#ffffff':'#3a527a';
+          return (
+            <g key={'b'+i}>
+              <rect x={cx(i)-barW/2} y={y} width={barW} height={plotBot-y} rx="5" fill={fill}/>
+              <text x={cx(i)} y={(y+plotBot)/2+5} textAnchor="middle" fontSize="13" fontWeight="700" fill={tc}>{fmtN(v)}</text>
+            </g>
+          );
+        })}
+        {/* excl line */}
+        {pts&&<polyline points={pts} fill="none" stroke="#1b2430" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>}
+        {(excl||[]).map((v,i)=>{
+          const y=yFor(v); if(y==null)return null;
+          return (
+            <g key={'e'+i}>
+              <circle cx={cx(i)} cy={y} r="4" fill="#fff" stroke="#1b2430" strokeWidth="2.5"/>
+              <text x={cx(i)} y={y-7} textAnchor="middle" fontSize="11" fontWeight="600" fill="#1b2430">{fmtN(v)}</text>
+            </g>
+          );
+        })}
+        {/* month labels */}
+        {all.map((v,i)=>(
+          <text key={'m'+i} x={cx(i)} y={H-7} textAnchor="middle" fontSize="12" fontWeight={i===minIdx||i===maxIdx?'700':'500'}
+            fill={i===minIdx?'#dd5043':i===maxIdx?'#1d5fb0':'#8b96a4'}>{months[i]?.abbr||''}</text>
         ))}
-        <path d={path} fill="none" stroke="#1d5fb0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-        {values.map((v,i)=>v!==null?(
-          <circle key={i} cx={cx(i)} cy={cy(v)} r="3.5" fill="#fff" stroke="#1d5fb0" strokeWidth="2.5"/>
-        ):null)}
-        {values.map((v,i)=>v!==null?(
-          <text key={`l${i}`} x={cx(i)} y={cy(v)-8} textAnchor="middle" fontSize="9" fill="#5f6b7a" fontWeight="600">
-            {fmtN(v)}
-          </text>
-        ):null)}
       </svg>
     </div>
   );
@@ -512,6 +540,9 @@ function OverviewTab({data,isWide,setTab,setCat,setDcFocus}) {
   const trendAll = months.map((_,i)=>grandAll(abcc,i));
   const trendGen = months.map((_,i)=>grandAll(ab,i));
   const trendCold= months.map((_,i)=>grandAll(cc,i));
+  const trendAllExcl = months.map((_,i)=>grandExcl(abcc,i));
+  const trendGenExcl = months.map((_,i)=>grandExcl(ab,i));
+  const trendColdExcl= months.map((_,i)=>grandExcl(cc,i));
 
   const monthLabel=months[li]?.label||'';
 
@@ -561,11 +592,11 @@ function OverviewTab({data,isWide,setTab,setCat,setDcFocus}) {
 
       {/* Trend charts */}
       <div style={{marginBottom:16}}>
-        <TrendChart values={trendAll} months={months} title="แนวโน้ม SLA รวม (AB+CC)" subtitle="เฉลี่ยทุก DC · ทุกสาเหตุ"/>
+        <TrendChart all={trendAll} excl={trendAllExcl} months={months} title="แนวโน้ม SLA รวม (AB+CC)"/>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:16,marginBottom:16}}>
-        <TrendChart values={trendGen} months={months} title="แนวโน้ม SLA ทั่วไป (AB)"/>
-        <TrendChart values={trendCold} months={months} title="แนวโน้ม SLA Coldchain (CC)"/>
+        <TrendChart all={trendGen} excl={trendGenExcl} months={months} title="แนวโน้ม SLA ทั่วไป (AB)"/>
+        <TrendChart all={trendCold} excl={trendColdExcl} months={months} title="แนวโน้ม SLA Coldchain (CC)"/>
       </div>
 
       {/* Region table */}
@@ -953,29 +984,28 @@ function AnalysisTab({data,cat,cause,isWide}) {
 
   // Distribution heatmap — count DCs in each tier per month
   const tiers = [
-    {name:'≥90%',dot:'#1d5fb0',fn:v=>v>=90},
-    {name:'80–89%',dot:'#8ab2d5',fn:v=>v>=80&&v<90},
-    {name:'70–79%',dot:'#e07060',fn:v=>v>=70&&v<80},
-    {name:'<70%',dot:'#dd5043',fn:v=>v<70},
+    {name:'≥90%',dot:'#2f74c9',rgb:'47,116,201',fn:v=>v>=90},
+    {name:'80–89%',dot:'#788292',rgb:'120,132,146',fn:v=>v>=80&&v<90},
+    {name:'70–79%',dot:'#d98a1e',rgb:'217,138,30',fn:v=>v>=70&&v<80},
+    {name:'<70%',dot:'#d6453a',rgb:'214,69,58',fn:v=>v<70},
   ];
-  const distData = tiers.map(t=>({
-    ...t,
-    cells: shownMs.map(i=>{
+  const distData = tiers.map(t=>{
+    const counts = shownMs.map(i=>{
       const vals = dcs.map(d=>d[metric][i]).filter(v=>v!==null);
-      const cnt = vals.filter(t.fn).length;
-      const mx = vals.length||1;
-      const intensity = cnt/mx;
-      // Color: deeper = more DCs in this tier
-      const alpha = 0.15+intensity*0.75;
-      let bg;
-      if(t.dot==='#1d5fb0') bg=`rgba(29,95,176,${alpha})`;
-      else if(t.dot==='#8ab2d5') bg=`rgba(138,178,213,${alpha})`;
-      else if(t.dot==='#e07060') bg=`rgba(224,112,96,${alpha})`;
-      else bg=`rgba(221,80,67,${alpha})`;
-      const textColor = intensity>0.5?'#fff':'#1b2430';
-      return { v:cnt, bg, color:textColor, ring:i===li?'inset 0 0 0 2px #0e5a61':undefined };
-    })
-  }));
+      return vals.filter(t.fn).length;
+    });
+    const rmax = Math.max(...counts)||1;
+    return {
+      ...t,
+      cells: shownMs.map((i,ci)=>{
+        const cnt = counts[ci];
+        const a = cnt===0 ? 0.05 : (0.16 + 0.84*(cnt/rmax));
+        const bg=`rgba(${t.rgb},${a.toFixed(3)})`;
+        const textColor = a>0.55?'#fff':'#1b2430';
+        return { v:cnt, bg, color:textColor, ring:i===li?'inset 0 0 0 2px rgba(14,90,97,0.55)':undefined };
+      })
+    };
+  });
 
   // Trajectory quadrant (based on latest SLA level vs 3-month trend)
   const trajectoryDcs = dcs.map(dc=>{
