@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div ref="{{ rootRef }}" style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:18px 20px 12px; font-family:'IBM Plex Sans Thai',system-ui,sans-serif;">
+  <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:5px; flex-wrap:wrap;">
+    <div style="font-size:14px; font-weight:700; color:#1b2430;">{{ title }}</div>
+    <div style="display:flex; align-items:center; gap:10px; font-size:9.5px; color:#8b96a4;">
+      <span style="display:flex; align-items:center; gap:4px;"><span style="width:12px; height:8px; border-radius:2px; background:#cfddf1; display:inline-block;"></span>ทุกสาเหตุ</span>
+      <span style="display:flex; align-items:center; gap:4px;"><span style="width:14px; height:0; border-top:2.5px solid #1b2430; display:inline-block;"></span>ตัดสาเหตุลูกค้า</span>
+    </div>
+  </div>
+  <sc-if value="{{ hasSub }}">
+  <div style="font-size:11.5px; color:#9aa3b0; margin-bottom:4px;">{{ subtitle }}</div>
+  </sc-if>
+  {{ svgChart }}
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:720,&quot;height&quot;:300},&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;แนวโน้ม SLA ภาพรวม&quot;},&quot;subtitle&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;ค่า SLA รายเดือน (%) · ม.ค.–มิ.ย.&quot;},&quot;all&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[79.6,78.3,78.1,77.7,74.4,73.9]},&quot;excl&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[81.5,80.1,80.8,80.4,76.2,76.4]},&quot;labels&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[&quot;ม.ค.&quot;,&quot;ก.พ.&quot;,&quot;มี.ค.&quot;,&quot;เม.ย.&quot;,&quot;พ.ค.&quot;,&quot;มิ.ย.&quot;]},&quot;latest&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:5}}">
+class Component extends DCLogic {
+  state = { w: 0 };
+  _ref = React.createRef();
+  fmt(v) { return v == null ? '—' : v.toFixed(1); }
+  measure() { const el = this._ref.current; if (!el) return; const w = el.clientWidth - 40; if (w > 0 && Math.abs(w - this.state.w) > 1) this.setState({ w }); }
+  componentDidMount() { this.measure(); if (typeof ResizeObserver !== 'undefined' && this._ref.current) { this._ro = new ResizeObserver(() => this.measure()); this._ro.observe(this._ref.current); } this._onR = () => this.measure(); window.addEventListener('resize', this._onR); }
+  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._onR) window.removeEventListener('resize', this._onR); }
+  renderVals() {
+    const p = this.props;
+    const all = p.all || [79.6, 78.3, 78.1, 77.7, 74.4, 73.9];
+    const excl = p.excl || [81.5, 80.1, 80.8, 80.4, 76.2, 76.4];
+    const labels = p.labels || ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.'];
+    const latest = p.latest == null ? all.length - 1 : p.latest;
+
+    const W = 720, H = 232, padX = 20, padBot = 30;
+    const plotTop = 40, plotBot = H - padBot, plotH = plotBot - plotTop;
+    const lo = 50, hi = 92, span = hi - lo;
+    const n = all.length || 6;
+    const slot = (W - 2 * padX) / n;
+    const barW = Math.min(54, slot * 0.5);
+    const cx = (i) => padX + slot * i + slot / 2;
+    const yFor = (v) => { if (v == null) return null; const c = Math.max(lo, Math.min(hi, v)); return plotBot - ((c - lo) / span) * plotH; };
+
+    const h = React.createElement;
+    const vpMobile = (typeof window !== 'undefined' && window.innerWidth < 700);
+    const scale = this.state.w > 0 ? this.state.w / W : 0.8;
+    const fpx = (t, mn, mx) => Math.max(mn, Math.min(mx, t / scale));
+    const fBar = vpMobile ? 20 : fpx(15, 9, 30);
+    const fLine = vpMobile ? 17 : fpx(12.5, 8, 26);
+    const fMonth = vpMobile ? 19 : fpx(14, 9, 28);
+    const els = [];
+    let maxIdx = -1, minIdx = -1;
+    all.forEach((v, i) => { if (v == null) return; if (maxIdx < 0 || v > all[maxIdx]) maxIdx = i; if (minIdx < 0 || v < all[minIdx]) minIdx = i; });
+    all.forEach((v, i) => {
+      const y = yFor(v); if (y == null) return;
+      const center = cx(i);
+      const fill = i === minIdx ? '#dd5043' : (i === maxIdx ? '#1d5fb0' : '#cfddf1');
+      const tcolor = (i === minIdx || i === maxIdx) ? '#ffffff' : '#3a527a';
+      els.push(h('rect', { key: 'r' + i, x: center - barW / 2, y, width: barW, height: plotBot - y, rx: 5, fill }));
+      els.push(h('text', { key: 'bt' + i, x: center, y: (y + plotBot) / 2 + fBar * 0.33, textAnchor: 'middle', fontSize: fBar, fontWeight: 700, fill: tcolor, fontFamily: 'inherit' }, this.fmt(v)));
+    });
+    const linePts = excl.map((v, i) => { const y = yFor(v); return y == null ? null : (cx(i) + ',' + y); }).filter(Boolean).join(' ');
+    els.push(h('polyline', { key: 'poly', points: linePts, fill: 'none', stroke: '#1b2430', strokeWidth: 2.5, strokeLinejoin: 'round', strokeLinecap: 'round' }));
+    excl.forEach((v, i) => {
+      const y = yFor(v); if (y == null) return;
+      els.push(h('circle', { key: 'c' + i, cx: cx(i), cy: y, r: 4, fill: '#ffffff', stroke: '#1b2430', strokeWidth: 2.5 }));
+      els.push(h('text', { key: 'pt' + i, x: cx(i), y: y - (fLine * 0.8 + 2), textAnchor: 'middle', fontSize: fLine, fontWeight: 600, fill: '#1b2430', fontFamily: 'inherit' }, this.fmt(v)));
+    });
+    labels.forEach((l, i) => {
+      els.push(h('text', { key: 'x' + i, x: cx(i), y: H - 7, textAnchor: 'middle', fontSize: fMonth, fontWeight: (i === minIdx || i === maxIdx) ? 700 : 500, fill: i === minIdx ? '#dd5043' : (i === maxIdx ? '#1d5fb0' : '#8b96a4'), fontFamily: 'inherit' }, l));
+    });
+
+    const svgChart = h('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', overflow: 'visible' } }, els);
+    const subtitle = p.subtitle || '';
+    return { title: p.title || 'แนวโน้ม SLA', subtitle, hasSub: !!subtitle.trim(), svgChart, rootRef: this._ref };
+  }
+}
+</script>
+</body>
+</html>
