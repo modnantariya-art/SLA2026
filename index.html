@@ -1,1270 +1,1106 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SLA ศูนย์กระจายสินค้า 2026</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box;}
-html,body{margin:0;background:#eef1f4;font-family:'IBM Plex Sans Thai',system-ui,-apple-system,sans-serif;color:#1b2430;-webkit-font-smoothing:antialiased;}
-::-webkit-scrollbar{height:6px;width:6px;}
-::-webkit-scrollbar-thumb{background:#cdd5de;border-radius:8px;}
-::-webkit-scrollbar-track{background:transparent;}
-input{font-family:inherit;}
-button{font-family:inherit;}
-</style>
+<script src="./support.js"></script>
 </head>
 <body>
-<div id="root"><div style="padding:80px 0;text-align:center;color:#8b96a4;font-size:14px;">กำลังโหลด…</div></div>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
-<script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo, useCallback, useRef } = React;
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    *{ box-sizing:border-box; }
+    html,body{ margin:0; }
+    ::-webkit-scrollbar{ height:7px; width:7px; }
+    ::-webkit-scrollbar-thumb{ background:#cdd5de; border-radius:8px; }
+    ::-webkit-scrollbar-track{ background:transparent; }
+  </style>
+</helmet>
+<div style="min-height:100vh; background:#eef1f4; font-family:'IBM Plex Sans Thai',system-ui,-apple-system,sans-serif; color:#1b2430; -webkit-font-smoothing:antialiased;">
 
-// ── Config ───────────────────────────────────────────────────────────────────
-const SHEET_ID = '1z0g24oCmyua1bzN1LlXiG3Bu6ydB5_2-e1ax72AtOUA';
-
-// Race two methods — first success wins, no waiting for the slower one
-function promiseAny(promises) {
-  return new Promise((resolve, reject) => {
-    let remaining = promises.length;
-    const errors = [];
-    if (!remaining) return reject(new Error('empty'));
-    promises.forEach((p, i) => {
-      Promise.resolve(p).then(resolve, e => {
-        errors[i] = e;
-        if (--remaining === 0) reject(new Error(errors.map(e=>e&&e.message||String(e)).join(' | ')));
-      });
-    });
-  });
-}
-
-// ── Method A: gviz JSONP — works when sheet is "Anyone with the link" ────────
-const _gvizPending = {};
-let _gvizIntercepted = false, _gvizReqId = 0;
-
-function ensureGvizInterceptor() {
-  if (_gvizIntercepted) return;
-  _gvizIntercepted = true;
-  window.google = window.google || {};
-  window.google.visualization = window.google.visualization || {};
-  window.google.visualization.Query = window.google.visualization.Query || {};
-  window.google.visualization.Query.setResponse = (resp) => {
-    const cb = _gvizPending[resp && resp.reqId];
-    if (cb) { delete _gvizPending[resp.reqId]; cb(resp); }
-  };
-}
-
-function fetchSheetJsonP(sheet) {
-  ensureGvizInterceptor();
-  const reqId = _gvizReqId++;
-  const cbName = '_gvizCb' + reqId;
-  return new Promise((resolve, reject) => {
-    const el = document.createElement('script');
-    const handleResp = (resp) => {
-      clearTimeout(timer); delete window[cbName]; el.parentNode && el.parentNode.removeChild(el);
-      if (resp && resp.status === 'ok') resolve(resp.table);
-      else {
-        const msg = ((resp && resp.errors) || []).map(e => e.detailed_message || e.message).join('; ') || 'access denied';
-        reject(new Error('__ACCESS__:' + sheet + ':' + msg));
-      }
-    };
-    _gvizPending[reqId] = handleResp;
-    window[cbName] = handleResp;
-    const timer = setTimeout(() => {
-      delete _gvizPending[reqId]; delete window[cbName]; el.parentNode && el.parentNode.removeChild(el);
-      reject(new Error('__TIMEOUT__:' + sheet));
-    }, 12000);
-    el.onerror = () => {
-      clearTimeout(timer); delete _gvizPending[reqId]; delete window[cbName];
-      reject(new Error('__SCRIPT__:' + sheet));
-    };
-    el.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;reqId:${reqId};handler:${cbName}&sheet=${encodeURIComponent(sheet)}&headers=0`;
-    document.head.appendChild(el);
-  });
-}
-
-// ── Method B: Published CSV fetch — uses hardcoded publish ID + GIDs ─────────
-const PUB_ID = '2PACX-1vR7DJfYHleowvSMfrW_J72TWW9SSWTwbQv-wLr4DGUXoL5X9ncJGiTpdQsXPhSHdAUTEmEovL-TdQex';
-const PUB_GIDS = { 'AB': '713489536', 'CC': '866530577', 'AB+CC': '563246109' };
-
-async function fetchSheetPubCsv(sheet) {
-  const gid = PUB_GIDS[sheet];
-  if (!gid) throw new Error('unknown-sheet:' + sheet);
-  const url = `https://docs.google.com/spreadsheets/d/e/${PUB_ID}/pub?output=csv&gid=${gid}&single=true`;
-  const r = await fetch(url, {credentials:'omit'});
-  const text = await r.text();
-  if (text.trimStart().startsWith('<')) throw new Error('not-published:' + sheet);
-  const parsed = parseSheet(text);
-  if (!parsed) throw new Error('parse-failed:' + sheet);
-  return parsed;
-}
-
-function parseGVizTable(table) {
-  if (!table || !table.rows) return null;
-  // Convert gviz rows → CSV text using formatted value (f) when available,
-  // falling back to raw value (v). This handles typed columns where gviz stores
-  // header text as f:"Jan" but v:null because the column is typed as NUMBER.
-  const csv = table.rows.map(row => {
-    return (row.c || []).map(cell => {
-      if (!cell || (cell.v == null && cell.f == null)) return '';
-      const val = cell.f != null ? String(cell.f) : String(cell.v);
-      return val.includes(',') || val.includes('"') || val.includes('\n')
-        ? '"' + val.replace(/"/g, '""') + '"' : val;
-    }).join(',');
-  }).join('\n');
-  return parseSheet(csv);
-}
-
-const REGIONS = [
-  { id:'north',     name:'ภาคเหนือ',      short:'เหนือ' },
-  { id:'northeast', name:'ภาคอีสาน',      short:'อีสาน' },
-  { id:'central',   name:'ภาคกลาง',       short:'กลาง'  },
-  { id:'east',      name:'ภาคตะวันออก',   short:'ตะวันออก' },
-  { id:'south',     name:'ภาคใต้',         short:'ใต้'   },
-  { id:'west',      name:'ภาคตะวันตก',    short:'ตะวันตก' },
-  { id:'bkk',       name:'BKK',            short:'BKK'   },
-];
-
-const DC_REGION = {
-  'DC เชียงใหม่':'north','DC ลำพูน':'north','DC ลำปาง':'north','DC อุตรดิตถ์':'north',
-  'DC แพร่':'north','DC น่าน':'north','DC พะเยา':'north','DC เชียงราย':'north',
-  'DC แม่ฮ่องสอน':'north','DC ฝาง':'north','DC แม่สาย':'north','DC ตาก':'north',
-  'DC สุโขทัย':'north','DC พิษณุโลก':'north','DC พิจิตร':'north','DC เพชรบูรณ์':'north',
-  'DC นครสวรรค์':'north','DC ชัยนาท':'north',
-  'DC โคราช':'northeast','DC บุรีรัมย์':'northeast','DC สุรินทร์':'northeast',
-  'DC ศรีสะเกษ':'northeast','DC อุบลราชธานี':'northeast','DC ยโสธร':'northeast',
-  'DC ชัยภูมิ':'northeast','DC ขอนแก่น':'northeast','DC อุดรธานี':'northeast',
-  'DC หนองคาย':'northeast','DC ร้อยเอ็ด':'northeast','DC กาฬสินธุ์':'northeast',
-  'DC สกลนคร':'northeast','DC นครพนม':'northeast','DC มุกดาหาร':'northeast',
-  'DC ปากช่อง':'northeast',
-  'DC ลพบุรี':'central','DC สระบุรี':'central','DC อยุธยา':'central','DC สุพรรณบุรี':'central',
-  'DC ชลบุรี':'east','DC ระยอง':'east','DC จันทบุรี':'east',
-  'DC พัทยา':'east','DC ปราจีนบุรี':'east','DC ฉะเชิงเทรา':'east',
-  'DC ทุ่งสง':'south','DC นครศรีธรรมราช':'south','DC พังงา':'south','DC ภูเก็ต':'south',
-  'DC สุราษฎร์':'south','DC ชุมพร':'south','DC กระบี่':'south','DC หาดใหญ่':'south','DC พัทลุง':'south',
-  'DC ชะอำ':'west','DC ราชบุรี':'west','DC กาญจนบุรี':'west','DC นครปฐม':'west','DC สมุทรสาคร':'west',
-  'DC พุทธมณฑลสาย 3':'bkk','CDC บางนา':'bkk','DC รังสิต':'bkk',
-};
-
-const M_ABBR = {Jan:'ม.ค.',Feb:'ก.พ.',Mar:'มี.ค.',Apr:'เม.ย.',May:'พ.ค.',Jun:'มิ.ย.',
-  Jul:'ก.ค.',Aug:'ส.ค.',Sep:'ก.ย.',Oct:'ต.ค.',Nov:'พ.ย.',Dec:'ธ.ค.'};
-const M_FULL = {Jan:'มกราคม',Feb:'กุมภาพันธ์',Mar:'มีนาคม',Apr:'เมษายน',
-  May:'พฤษภาคม',Jun:'มิถุนายน',Jul:'กรกฎาคม',Aug:'สิงหาคม',
-  Sep:'กันยายน',Oct:'ตุลาคม',Nov:'พฤศจิกายน',Dec:'ธันวาคม'};
-
-// ── CSV Parsing ──────────────────────────────────────────────────────────────
-function parseRow(line) {
-  const fields = []; let cur = ''; let inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') { if (inQ && line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ; }
-    else if (c === ',' && !inQ) { fields.push(cur.trim()); cur=''; }
-    else cur += c;
-  }
-  fields.push(cur.trim());
-  return fields;
-}
-
-function parseMonthLabel(raw) {
-  const s = raw.trim();
-  const partial = s.match(/^(\d[\d\-]+)\s+(\w+)$/);
-  if (partial) {
-    const [,range,mName] = partial;
-    const key = mName.slice(0,3);
-    const thFull = M_FULL[key] || mName;
-    return { abbr: M_ABBR[key]||s, label:`${range} ${thFull}`, isPartial:true };
-  }
-  const key = s.slice(0,3);
-  return { abbr: M_ABBR[key]||s, label: M_FULL[key]||s, isPartial:false };
-}
-
-function parseSheet(text) {
-  const lines = text.replace(/\r/g,'').split('\n').filter(l => l.trim());
-  if (lines.length < 3) return null;
-
-  // Find the month-header row: first field is 'DC' and second field looks like a month
-  const isMonth = s => /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d)/i.test((s||'').trim());
-  let monthRowIdx = -1;
-  for (let i = 0; i < Math.min(6, lines.length); i++) {
-    const r = parseRow(lines[i]);
-    if ((r[0]||'').trim() === 'DC' && isMonth(r[1])) { monthRowIdx = i; break; }
-  }
-  if (monthRowIdx === -1) return null;
-
-  const row1 = parseRow(lines[monthRowIdx]);
-  const months = [], colBase = [];
-  for (let c = 1; c < row1.length; c++) {
-    const cell = (row1[c]||'').trim();
-    if (cell && isMonth(cell)) {
-      months.push(parseMonthLabel(cell));
-      colBase.push(c);
-    }
-  }
-  if (!months.length) return null;
-
-  // DC rows: start after monthRow, skip non-DC lines (metric headers etc.)
-  const isDcName = s => /^(DC|CDC)\s/.test((s||'').trim());
-  const dcs = [];
-  let seenDc = false;
-  for (let i = monthRowIdx + 1; i < lines.length; i++) {
-    const row = parseRow(lines[i]);
-    const name = (row[0]||'').trim();
-    if (!name) continue;
-    if (!seenDc && !isDcName(name)) continue; // skip header fragments
-    seenDc = true;
-    if (!isDcName(name)) continue; // stop if non-DC after data started (e.g. totals row)
-    const all = [], excl = [];
-    for (let m = 0; m < months.length; m++) {
-      const b = colBase[m];
-      const ra = (row[b]||'').trim(), re = (row[b+1]||'').trim();
-      const av = parseFloat(ra), ev = parseFloat(re);
-      all.push(isNaN(av)||ra==='' ? null : av);
-      excl.push(isNaN(ev)||re==='' ? null : ev);
-    }
-    dcs.push({ name, region: DC_REGION[name]||'unknown', all, excl });
-  }
-
-  // Auto-detect fraction vs percentage: if values look like 0–1, multiply by 100
-  const sample = dcs.flatMap(d=>d.all).filter(v=>v!==null).slice(0,10);
-  const isFraction = sample.length > 0 && sample.every(v => v <= 1.5);
-  if (isFraction) {
-    dcs.forEach(dc => {
-      dc.all  = dc.all.map(v  => v  !== null ? Math.round(v*10000)/100 : null);
-      dc.excl = dc.excl.map(v => v !== null ? Math.round(v*10000)/100 : null);
-    });
-  }
-
-  return { months, dcs };
-}
-
-// ── Computation helpers ──────────────────────────────────────────────────────
-function avg(vals) {
-  const v = vals.filter(x => x !== null && x !== undefined && !isNaN(x));
-  return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
-}
-function latestIdx(dcs, metric) {
-  const n = dcs[0]?.[metric]?.length || 0;
-  for (let i = n-1; i >= 0; i--) {
-    if (dcs.some(d => d[metric][i] !== null)) return i;
-  }
-  return -1;
-}
-
-// ── Color helpers ────────────────────────────────────────────────────────────
-function cellColor(v) {
-  if (v===null||v===undefined) return {bg:'transparent',color:'#d0d7df'};
-  if (v>=90) return {bg:'#e7f0fb',color:'#1d5fb0'};
-  if (v>=80) return {bg:'#f1f4f7',color:'#3a4654'};
-  if (v>=70) return {bg:'#fbeae6',color:'#c44e41'};
-  return {bg:'#f6d9d2',color:'#dd5043'};
-}
-function dotColor(v) {
-  if (v===null) return '#e0e5ea';
-  if (v>=90) return '#1d5fb0'; if (v>=80) return '#8ab2d5';
-  if (v>=70) return '#e07060'; return '#dd5043';
-}
-function fmt(v) { return v===null||v===undefined?'—':v.toFixed(2); }
-function fmtN(v) { return v===null||v===undefined?'—':v.toFixed(1); }
-function fmtDelta(now,prev) {
-  if (now===null||prev===null) return {arrow:'',str:'',color:'#9aa3b0'};
-  const d=now-prev;
-  if (Math.abs(d)<0.005) return {arrow:'',str:'0.00',color:'#9aa3b0'};
-  return {arrow:d>0?'▲':'▼',str:Math.abs(d).toFixed(2),color:d>0?'#2e8a4a':'#dd5043'};
-}
-
-// ── Chip style ───────────────────────────────────────────────────────────────
-function chipActive() {return {background:'#fff',color:'#1b2430',boxShadow:'0 1px 4px rgba(0,0,0,.12)'};}
-function chipInactive() {return {background:'transparent',color:'#5f6b7a',boxShadow:'none'};}
-
-// ── Trend Chart (SVG) — bars for "all", line for "excl" ─────────────────────
-function TrendChart({all, excl, months, title, subtitle}) {
-  const validAll = all.filter(v=>v!==null);
-  if (!validAll.length) return null;
-  const validExcl = (excl||[]).filter(v=>v!==null);
-  const allVals = [...validAll, ...validExcl];
-  const W=720, H=200, padX=20, padBot=30, plotTop=36, plotBot=H-padBot;
-  const plotH=plotBot-plotTop;
-  const lo=Math.max(0,Math.min(...allVals)-3), hi=Math.max(...allVals)+3, span=hi-lo||1;
-  const n=all.length, slot=(W-2*padX)/n, barW=Math.min(54,slot*0.55);
-  const cx=i=>padX+slot*i+slot/2;
-  const yFor=v=>v==null?null:plotBot-((Math.max(lo,Math.min(hi,v))-lo)/span)*plotH;
-  const ticks=[];
-  for(let v=Math.ceil(lo/10)*10;v<=hi;v+=10) ticks.push(v);
-  // find min/max index in all
-  let maxIdx=-1,minIdx=-1;
-  all.forEach((v,i)=>{if(v==null)return;if(maxIdx<0||v>all[maxIdx])maxIdx=i;if(minIdx<0||v<all[minIdx])minIdx=i;});
-  // excl polyline
-  const pts=(excl||[]).map((v,i)=>{const y=yFor(v);return y==null?null:cx(i)+','+y;}).filter(Boolean).join(' ');
-  return (
-    <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'16px 18px 10px'}}>
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,marginBottom:4,flexWrap:'wrap'}}>
-        {title&&<div style={{fontSize:14,fontWeight:700}}>{title}</div>}
-        <div style={{display:'flex',alignItems:'center',gap:12,fontSize:9.5,color:'#8b96a4'}}>
-          <span style={{display:'flex',alignItems:'center',gap:4}}>
-            <span style={{width:12,height:8,borderRadius:2,background:'#cfddf1',display:'inline-block'}}/>ทุกสาเหตุ
-          </span>
-          <span style={{display:'flex',alignItems:'center',gap:4}}>
-            <span style={{width:14,height:0,borderTop:'2.5px solid #1b2430',display:'inline-block'}}/>ตัดสาเหตุลูกค้า
-          </span>
+  <header style="position:sticky; top:0; z-index:40; background:rgba(248,250,251,0.9); backdrop-filter:blur(10px); border-bottom:1px solid #e1e6ec;">
+    <!-- ===== DESKTOP HEADER ===== -->
+    <sc-if value="{{ isWide }}">
+    <div style="max-width:1200px; margin:0 auto; padding:clamp(11px,3.2vw,13px) clamp(13px,4vw,20px) 6px; display:flex; align-items:center; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:42px; height:42px; border-radius:11px; background:#0e5a61; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; letter-spacing:.5px;">SLA</div>
+        <div>
+          <div style="font-size:17px; font-weight:700; line-height:1.15;">SLA ศูนย์กระจายสินค้า</div>
+          <div style="font-size:12.5px; color:#5f6b7a;">การจัดส่งตรงกำหนด · ปี 2026</div>
         </div>
       </div>
-      {subtitle&&<div style={{fontSize:11.5,color:'#9aa3b0',marginBottom:4}}>{subtitle}</div>}
-      <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',display:'block',overflow:'visible'}}>
-        {ticks.map(t=>(
-          <g key={t}>
-            <line x1={padX} y1={yFor(t)} x2={W-padX} y2={yFor(t)} stroke="#f0f3f6" strokeWidth="1"/>
-            <text x={padX-4} y={yFor(t)+3.5} textAnchor="end" fontSize="11" fill="#b0b8c4">{t}</text>
-          </g>
-        ))}
-        {/* bars for "all" */}
-        {all.map((v,i)=>{
-          const y=yFor(v); if(y==null)return null;
-          const fill=i===minIdx?'#dd5043':i===maxIdx?'#1d5fb0':'#cfddf1';
-          const tc=(i===minIdx||i===maxIdx)?'#ffffff':'#3a527a';
-          return (
-            <g key={'b'+i}>
-              <rect x={cx(i)-barW/2} y={y} width={barW} height={plotBot-y} rx="5" fill={fill}/>
-              <text x={cx(i)} y={(y+plotBot)/2+5} textAnchor="middle" fontSize="13" fontWeight="700" fill={tc}>{fmtN(v)}</text>
-            </g>
-          );
-        })}
-        {/* excl line */}
-        {pts&&<polyline points={pts} fill="none" stroke="#1b2430" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>}
-        {(excl||[]).map((v,i)=>{
-          const y=yFor(v); if(y==null)return null;
-          return (
-            <g key={'e'+i}>
-              <circle cx={cx(i)} cy={y} r="4" fill="#fff" stroke="#1b2430" strokeWidth="2.5"/>
-              <text x={cx(i)} y={y-7} textAnchor="middle" fontSize="11" fontWeight="600" fill="#1b2430">{fmtN(v)}</text>
-            </g>
-          );
-        })}
-        {/* month labels */}
-        {all.map((v,i)=>(
-          <text key={'m'+i} x={cx(i)} y={H-7} textAnchor="middle" fontSize="12" fontWeight={i===minIdx||i===maxIdx?'700':'500'}
-            fill={i===minIdx?'#dd5043':i===maxIdx?'#1d5fb0':'#8b96a4'}>{months[i]?.abbr||''}</text>
-        ))}
-      </svg>
+      <div style="display:flex; align-items:center; gap:9px; margin-left:auto;">
+        <span style="font-size:11.5px; color:{{ srcColor }}; font-weight:600; display:flex; align-items:center; gap:6px; white-space:nowrap;"><span style="width:7px; height:7px; border-radius:50%; background:{{ srcDot }};"></span>{{ srcLabelShort }}</span>
+        <button onClick="{{ refresh }}" title="ดึงข้อมูลใหม่จาก Google Sheet" style="border:1px solid #d9e0e6; cursor:pointer; padding:7px 13px; border-radius:9px; font-family:inherit; font-size:12.5px; font-weight:600; background:#fff; color:#33414f; display:flex; align-items:center; gap:6px;"><span style="display:inline-block; transform:{{ refreshSpin }};">↻</span>{{ refreshLabel }}</button>
+      </div>
     </div>
-  );
-}
 
-// ── Sparkline bars ───────────────────────────────────────────────────────────
-function SparkBars({values}) {
-  const valid = values.filter(v=>v!==null);
-  if (!valid.length) return <div style={{width:116,height:30}}/>;
-  const mx = Math.max(...valid)||1;
-  return (
-    <div style={{display:'flex',alignItems:'flex-end',gap:3,height:30,width:116}}>
-      {values.map((v,i)=>{
-        const pct = v===null?0:(v/mx)*100;
-        const {color} = cellColor(v);
-        return (
-          <div key={i} style={{flex:1,display:'flex',alignItems:'flex-end',height:'100%'}}>
-            <div style={{width:'100%',background:v===null?'#eef1f4':color,height:`${Math.max(pct,5)}%`,borderRadius:2,opacity:v===null?0.3:1}}/>
+    <div style="max-width:1200px; margin:0 auto; padding:0 clamp(13px,4vw,20px) 12px; display:flex; align-items:center; gap:12px 14px; flex-wrap:wrap;">
+      <div style="display:inline-flex; background:#e7ecef; border:1px solid #e1e6ec; border-radius:11px; padding:3px; gap:2px;">
+        <button onClick="{{ setTabOverview }}" style="border:none; cursor:pointer; padding:8px 18px; border-radius:8px; font-family:inherit; font-size:13.5px; font-weight:600; background:{{ ovBg }}; color:{{ ovColor }}; box-shadow:{{ ovSh }};">ภาพรวม</button>
+        <button onClick="{{ setTabRegion }}" style="border:none; cursor:pointer; padding:8px 18px; border-radius:8px; font-family:inherit; font-size:13.5px; font-weight:600; background:{{ rgBg }}; color:{{ rgColor }}; box-shadow:{{ rgSh }};">ภาค</button>
+        <button onClick="{{ setTabDc }}" style="border:none; cursor:pointer; padding:8px 18px; border-radius:8px; font-family:inherit; font-size:13.5px; font-weight:600; background:{{ dcBg }}; color:{{ dcColor }}; box-shadow:{{ dcSh }};">รายDC</button>
+        <button onClick="{{ setTabAnalysis }}" style="border:none; cursor:pointer; padding:8px 18px; border-radius:8px; font-family:inherit; font-size:13.5px; font-weight:600; background:{{ anBg }}; color:{{ anColor }}; box-shadow:{{ anSh }};">วิเคราะห์</button>
+      </div>
+
+      <sc-if value="{{ showCatCause }}">
+      <div style="display:flex; align-items:center; gap:10px; margin-left:auto; flex-wrap:wrap;">
+        <div style="display:flex; background:#e7ecef; border:1px solid #e1e6ec; border-radius:11px; padding:3px; gap:2px;">
+          <sc-for list="{{ catChips }}" as="c" hint-placeholder-count="3">
+            <button onClick="{{ c.onClick }}" style="border:none; cursor:pointer; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:12.5px; font-weight:600; background:{{ c.bg }}; color:{{ c.color }}; box-shadow:{{ c.sh }};">{{ c.name }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex; background:#e7ecef; border:1px solid #e1e6ec; border-radius:11px; padding:3px; gap:2px;">
+          <button onClick="{{ setAll }}" style="border:none; cursor:pointer; padding:8px 13px; border-radius:8px; font-family:inherit; font-size:12.5px; font-weight:600; background:{{ allBg }}; color:{{ allColor }}; box-shadow:{{ allSh }};">ทุกสาเหตุ</button>
+          <button onClick="{{ setExcl }}" style="border:none; cursor:pointer; padding:8px 13px; border-radius:8px; font-family:inherit; font-size:12.5px; font-weight:600; background:{{ exclBg }}; color:{{ exclColor }}; box-shadow:{{ exclSh }};">ตัดสาเหตุลูกค้า</button>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- ===== MOBILE HEADER ===== -->
+    <sc-if value="{{ isNarrow }}">
+    <div style="padding:9px 13px 10px; display:flex; flex-direction:column; gap:8px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="width:32px; height:32px; border-radius:9px; background:#0e5a61; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:10.5px; letter-spacing:.5px; flex-shrink:0;">SLA</div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13.5px; font-weight:700; line-height:1.12; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">SLA ศูนย์กระจายสินค้า</div>
+          <div style="font-size:10px; color:#5f6b7a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">การจัดส่งตรงกำหนด · ปี 2026</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+          <span style="font-size:9.5px; color:{{ srcColor }}; font-weight:600; display:flex; align-items:center; gap:4px; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:{{ srcDot }}; flex-shrink:0;"></span>{{ srcLabelShort }}</span>
+          <button onClick="{{ refresh }}" style="border:1px solid #d9e0e6; cursor:pointer; padding:5px 9px; border-radius:8px; font-family:inherit; font-size:10px; font-weight:600; background:#fff; color:#33414f; display:flex; align-items:center; gap:4px;"><span style="display:inline-block; transform:{{ refreshSpin }};">↻</span>{{ refreshLabel }}</button>
+        </div>
+      </div>
+
+      <div style="display:flex; background:#e7ecef; border:1px solid #e1e6ec; border-radius:10px; padding:3px; gap:2px;">
+        <button onClick="{{ setTabOverview }}" style="flex:1; border:none; cursor:pointer; padding:7px 2px; border-radius:7px; font-family:inherit; font-size:12px; font-weight:600; background:{{ ovBg }}; color:{{ ovColor }}; box-shadow:{{ ovSh }};">ภาพรวม</button>
+        <button onClick="{{ setTabRegion }}" style="flex:1; border:none; cursor:pointer; padding:7px 2px; border-radius:7px; font-family:inherit; font-size:12px; font-weight:600; background:{{ rgBg }}; color:{{ rgColor }}; box-shadow:{{ rgSh }};">ภาค</button>
+        <button onClick="{{ setTabDc }}" style="flex:1; border:none; cursor:pointer; padding:7px 2px; border-radius:7px; font-family:inherit; font-size:12px; font-weight:600; background:{{ dcBg }}; color:{{ dcColor }}; box-shadow:{{ dcSh }};">รายDC</button>
+        <button onClick="{{ setTabAnalysis }}" style="flex:1; border:none; cursor:pointer; padding:7px 2px; border-radius:7px; font-family:inherit; font-size:12px; font-weight:600; background:{{ anBg }}; color:{{ anColor }}; box-shadow:{{ anSh }};">วิเคราะห์</button>
+      </div>
+
+      <sc-if value="{{ showCatCause }}">
+      <div style="display:flex; gap:6px;">
+        <div style="display:flex; flex:1; min-width:0; background:#e7ecef; border:1px solid #e1e6ec; border-radius:9px; padding:2px;">
+          <sc-for list="{{ catChips }}" as="c" hint-placeholder-count="3">
+            <button onClick="{{ c.onClick }}" style="flex:1; min-width:0; border:none; cursor:pointer; padding:6px 3px; border-radius:7px; font-family:inherit; font-size:10.5px; font-weight:600; white-space:nowrap; background:{{ c.bg }}; color:{{ c.color }}; box-shadow:{{ c.sh }};">{{ c.name }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex; background:#e7ecef; border:1px solid #e1e6ec; border-radius:9px; padding:2px; flex-shrink:0;">
+          <button onClick="{{ setAll }}" style="border:none; cursor:pointer; padding:6px 8px; border-radius:7px; font-family:inherit; font-size:10.5px; font-weight:600; white-space:nowrap; background:{{ allBg }}; color:{{ allColor }}; box-shadow:{{ allSh }};">ทุกสาเหตุ</button>
+          <button onClick="{{ setExcl }}" style="border:none; cursor:pointer; padding:6px 8px; border-radius:7px; font-family:inherit; font-size:10.5px; font-weight:600; white-space:nowrap; background:{{ exclBg }}; color:{{ exclColor }}; box-shadow:{{ exclSh }};">ตัดลูกค้า</button>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+  </header>
+
+  <main style="max-width:1200px; margin:0 auto; padding:clamp(14px,4vw,20px) clamp(13px,4vw,20px) 56px;">
+
+    <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:80px 0; text-align:center; color:#8b96a4; font-size:14px;">กำลังโหลดข้อมูล SLA…</div>
+    </sc-if>
+
+    <sc-if value="{{ catEmpty }}">
+      <div style="background:#fff; border:1px dashed #ccd4dd; border-radius:16px; padding:54px 28px; text-align:center;">
+        <div style="width:54px; height:54px; border-radius:14px; background:#eef1f4; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#8b96a4;">CC</div>
+        <div style="font-size:16.5px; font-weight:700; margin-bottom:8px;">ยังไม่ได้เชื่อมข้อมูลหมวด “{{ catName }}”</div>
+        <div style="font-size:13.5px; color:#7a8593; max-width:460px; margin:0 auto; line-height:1.65;">ยังไม่มีข้อมูลสำหรับหมวดนี้ในระบบ — เมื่อมีข้อมูลใน Google Sheet ระบบจะแสดงผลให้ทันทีในรูปแบบเดียวกับหมวดอื่น</div>
+      </div>
+    </sc-if>
+
+    <!-- ===================== OVERVIEW ===================== -->
+    <sc-if value="{{ showOverview }}">
+    <section data-screen-label="ภาพรวม">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:11px;">
+        <div style="font-size:14px; font-weight:700;">ภาพรวมเดือนล่าสุด</div>
+        <div style="font-size:clamp(9px,2.3vw,10px); color:#8b96a4;">ค่า SLA · {{ monthLabel }} · เทียบกับเดือนก่อนหน้า · รวมทุกภาคและหมวด</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:12px; margin-bottom:16px;">
+        <sc-for list="{{ ovCards }}" as="c" hint-placeholder-count="3">
+          <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:11px 16px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">{{ c.label }}</div>
+            <div style="font-size:clamp(20px,5.4vw,23px); font-weight:700; margin-top:5px; font-variant-numeric:tabular-nums; line-height:1;">{{ c.val }}</div>
+            <div style="font-size:11px; margin-top:4px; color:{{ c.dColor }}; font-weight:600;">{{ c.dArrow }} {{ c.delta }} <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
           </div>
-        );
-      })}
-    </div>
-  );
-}
+        </sc-for>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:11px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">{{ ovLow.label }}</div>
+          <div style="font-size:clamp(20px,5.4vw,23px); font-weight:700; margin-top:5px; line-height:1; color:#dd5043;">{{ ovLow.month }}</div>
+          <div style="font-size:11px; margin-top:4px; color:#8b96a4;">SLA {{ ovLow.val }}</div>
+        </div>
+      </div>
 
-// ── Legend row ───────────────────────────────────────────────────────────────
-function Legend() {
-  return (
-    <div style={{display:'flex',gap:13,fontSize:11,color:'#8b96a4',alignItems:'center',flexWrap:'wrap'}}>
-      {[['#e7f0fb','≥90'],['#f1f4f7','80–89'],['#fbeae6','70–79'],['#f6d9d2','<70']].map(([bg,lbl])=>(
-        <span key={lbl} style={{display:'flex',alignItems:'center',gap:5}}>
-          <span style={{width:11,height:11,borderRadius:3,background:bg,display:'inline-block'}}/>
-          {lbl}
-        </span>
-      ))}
-    </div>
-  );
-}
+      <div style="margin-bottom:16px;">
+        <dc-import name="SLATrend" title="แนวโน้ม SLA ภาพรวม" subtitle="" all="{{ tcTotal.all }}" excl="{{ tcTotal.excl }}" labels="{{ tcTotal.labels }}" latest="{{ tcTotal.latest }}" hint-size="100%,300px"></dc-import>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; margin-bottom:16px;">
+        <dc-import name="SLATrend" title="แนวโน้ม SLA ทั่วไป" subtitle="" all="{{ tcGen.all }}" excl="{{ tcGen.excl }}" labels="{{ tcGen.labels }}" latest="{{ tcGen.latest }}" hint-size="100%,300px"></dc-import>
+        <dc-import name="SLATrend" title="แนวโน้ม SLA Coldchain" subtitle="" all="{{ tcCold.all }}" excl="{{ tcCold.excl }}" labels="{{ tcCold.labels }}" latest="{{ tcCold.latest }}" hint-size="100%,300px"></dc-import>
+      </div>
 
-// ── Heatmap Cell ─────────────────────────────────────────────────────────────
-function Cell({v,latest,size=12.5}) {
-  const {bg,color}=cellColor(v);
-  return (
-    <div style={{margin:2,padding:'5px 1px',borderRadius:6,
-      background:v===null?'transparent':bg,
-      boxShadow:latest?'inset 0 0 0 2px #0e5a61':undefined,
-      textAlign:'center'}}>
-      <span style={{fontSize:size,fontWeight:700,color:v===null?'#d0d7df':color,fontVariantNumeric:'tabular-nums'}}>
-        {fmt(v)}
-      </span>
-    </div>
-  );
-}
-
-// ── Header ───────────────────────────────────────────────────────────────────
-function Header({tab,setTab,cat,setCat,cause,setCause,isWide,months}) {
-  const showFilters = tab!=='overview';
-  const cats=[{id:'total',name:'รวม'},{id:'general',name:'ทั่วไป'},{id:'cold',name:'Coldchain'}];
-  const tabs=[{id:'overview',label:'ภาพรวม'},{id:'region',label:'ภาค'},{id:'dc',label:'รายDC'},{id:'analysis',label:'วิเคราะห์'}];
-  const tabBtn=(t)=>{
-    const active=tab===t.id;
-    return <button key={t.id} onClick={()=>setTab(t.id)} style={{
-      border:'none',cursor:'pointer',
-      padding:isWide?'8px 18px':'7px 0',
-      flex:isWide?undefined:1,
-      borderRadius:8,fontFamily:'inherit',
-      fontSize:isWide?13.5:12,fontWeight:600,
-      ...(active?chipActive():chipInactive())
-    }}>{t.label}</button>;
-  };
-  const chipBtn=(id,name,val,setter)=>{
-    const active=val===id;
-    return <button key={id} onClick={()=>setter(id)} style={{
-      border:'none',cursor:'pointer',
-      padding:isWide?'7px 14px':'6px 8px',
-      borderRadius:8,fontFamily:'inherit',
-      fontSize:isWide?12.5:10.5,fontWeight:600,
-      whiteSpace:'nowrap',
-      ...(active?chipActive():chipInactive())
-    }}>{name}</button>;
-  };
-  return (
-    <header style={{position:'sticky',top:0,zIndex:40,background:'rgba(248,250,251,0.95)',
-      backdropFilter:'blur(10px)',borderBottom:'1px solid #e1e6ec'}}>
-      {isWide ? (
-        <>
-          <div style={{maxWidth:1200,margin:'0 auto',padding:'11px 20px',display:'flex',alignItems:'center',gap:18,flexWrap:'wrap'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginRight:'auto'}}>
-              <div style={{width:42,height:42,borderRadius:11,background:'#0e5a61',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,letterSpacing:.5}}>SLA</div>
-              <div>
-                <div style={{fontSize:17,fontWeight:700,lineHeight:1.15}}>SLA ศูนย์กระจายสินค้า</div>
-                <div style={{fontSize:12.5,color:'#5f6b7a'}}>การจัดส่งตรงกำหนด · ปี 2026</div>
-              </div>
+      <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:18px 20px 14px;">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
+          <div style="font-size:14px; font-weight:700;">SLA ตามภาค · {{ monthLabel }}</div>
+          <div style="font-size:11.5px; color:#8b96a4;">ภาพรวมทุกหมวด · เรียงตาม SLA ทุกสาเหตุ</div>
+        </div>
+        <sc-if value="{{ regionMobile }}">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <sc-for list="{{ ovRegions }}" as="r" hint-placeholder-count="7">
+            <div style="display:flex; align-items:center; gap:9px; padding:5px 11px; border-radius:10px;">
+              <div style="width:7px; height:7px; border-radius:50%; background:{{ r.dot }}; flex-shrink:0;"></div>
+              <div style="min-width:0; flex:1; font-size:clamp(11px,2.9vw,13px); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.name }}</div>
+              <div style="font-size:clamp(13.5px,3.6vw,16px); font-weight:700; color:{{ r.nowColor }}; font-variant-numeric:tabular-nums; text-align:right; flex-shrink:0;">{{ r.now }}</div>
+              <div style="font-size:clamp(9px,2.4vw,10.5px); color:{{ r.dColor }}; font-weight:600; font-variant-numeric:tabular-nums; flex-shrink:0; min-width:44px; text-align:right;">{{ r.dArrow }} {{ r.delta }}</div>
             </div>
-            {showFilters && (
-              <>
-                <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                  <div style={{fontSize:10.5,color:'#8b96a4',fontWeight:600,paddingLeft:2}}>หมวดสินค้า</div>
-                  <div style={{display:'flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:11,padding:3}}>
-                    {cats.map(c=>chipBtn(c.id,c.name,cat,setCat))}
+          </sc-for>
+          <div style="display:flex; align-items:center; gap:9px; padding:7px 11px; border-radius:10px; background:#f6f8f9; margin-top:3px;">
+            <div style="width:7px; height:7px; flex-shrink:0;"></div>
+            <div style="min-width:0; flex:1; font-size:clamp(11px,2.9vw,13px); font-weight:700;">ภาพรวมทั้งหมด</div>
+            <div style="font-size:clamp(13.5px,3.6vw,16px); font-weight:700; color:{{ ovGrand.nowColor }}; font-variant-numeric:tabular-nums; text-align:right; flex-shrink:0;">{{ ovGrand.now }}</div>
+            <div style="flex-shrink:0; min-width:44px;"></div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ regionDesktop }}">
+        <div style="display:grid; grid-template-columns:minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(150px,2.3fr); gap:10px; align-items:center; padding:0 6px 9px; border-bottom:1px solid #eef1f4; font-size:11px; color:#8b96a4; font-weight:600;">
+          <div>ภาค</div>
+          <div style="text-align:center;">DC</div>
+          <div style="text-align:center;">ต่ำกว่า 90</div>
+          <div style="text-align:right;">ทุกสาเหตุ</div>
+          <div style="text-align:right;">ตัดลูกค้า</div>
+          <div style="text-align:right;">แนวโน้มรายเดือน</div>
+        </div>
+        <sc-for list="{{ ovRegions }}" as="r" hint-placeholder-count="7">
+          <div style="display:grid; grid-template-columns:minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(150px,2.3fr); gap:10px; align-items:center; padding:6px 6px; border-bottom:1px solid #f3f5f7;">
+            <div>
+              <div style="font-size:14px; font-weight:600;">{{ r.name }}</div>
+              <div style="font-size:11px; color:{{ r.dColor }}; font-weight:600; margin-top:2px;">{{ r.dArrow }} {{ r.delta }} <span style="color:#9aa3b0; font-weight:400;">จากเดือนก่อน</span></div>
+            </div>
+            <div style="text-align:center; font-size:13px; color:#5f6b7a; font-variant-numeric:tabular-nums;">{{ r.count }}</div>
+            <div style="text-align:center; font-size:13px; font-weight:600; color:{{ r.badColor }}; font-variant-numeric:tabular-nums;">{{ r.bad }}</div>
+            <div style="text-align:right; font-size:16px; font-weight:700; color:{{ r.nowColor }}; font-variant-numeric:tabular-nums;">{{ r.now }}</div>
+            <div style="text-align:right; font-size:13px; color:#9aa3b0; font-variant-numeric:tabular-nums;">{{ r.excl }}</div>
+            <div style="display:flex; justify-content:flex-end;">
+              <div style="display:flex; align-items:flex-end; gap:3px; height:30px; width:116px;">
+                <sc-for list="{{ r.bars }}" as="b" hint-placeholder-count="6">
+                  <div style="flex:1; display:flex; align-items:flex-end; height:100%;">
+                    <div style="width:100%; background:{{ b.c }}; height:{{ b.h }}; border-radius:2px;"></div>
                   </div>
-                </div>
-                <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                  <div style={{fontSize:10.5,color:'#8b96a4',fontWeight:600,paddingLeft:2}}>สาเหตุ</div>
-                  <div style={{display:'flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:11,padding:3}}>
-                    {chipBtn('all','ทุกสาเหตุ',cause,setCause)}
-                    {chipBtn('excl','ตัดสาเหตุลูกค้า',cause,setCause)}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          <div style={{maxWidth:1200,margin:'0 auto',padding:'0 20px 12px',display:'flex',alignItems:'center',gap:14}}>
-            <div style={{display:'inline-flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:11,padding:3,gap:2}}>
-              {tabs.map(tabBtn)}
-            </div>
-          </div>
-        </>
-      ) : (
-        <div style={{padding:'9px 13px 10px',display:'flex',flexDirection:'column',gap:8}}>
-          <div style={{display:'flex',alignItems:'center',gap:9}}>
-            <div style={{width:32,height:32,borderRadius:9,background:'#0e5a61',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:10.5,letterSpacing:.5,flexShrink:0}}>SLA</div>
-            <div style={{minWidth:0}}>
-              <div style={{fontSize:13.5,fontWeight:700,lineHeight:1.12}}>SLA ศูนย์กระจายสินค้า</div>
-              <div style={{fontSize:10,color:'#5f6b7a'}}>การจัดส่งตรงกำหนด · ปี 2026</div>
-            </div>
-          </div>
-          <div style={{display:'flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:10,padding:3,gap:2}}>
-            {tabs.map(tabBtn)}
-          </div>
-          {showFilters && (
-            <div style={{display:'flex',gap:6}}>
-              <div style={{display:'flex',flex:1,minWidth:0,background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:9,padding:2}}>
-                {cats.map(c=>chipBtn(c.id,c.name,cat,setCat))}
-              </div>
-              <div style={{display:'flex',background:'#e7ecef',border:'1px solid #e1e6ec',borderRadius:9,padding:2,flexShrink:0}}>
-                {chipBtn('all','ทุกสาเหตุ',cause,setCause)}
-                {chipBtn('excl','ตัดลูกค้า',cause,setCause)}
+                </sc-for>
               </div>
             </div>
-          )}
+          </div>
+        </sc-for>
+        <div style="display:grid; grid-template-columns:minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(150px,2.3fr); gap:10px; align-items:center; padding:9px 12px; background:#f6f8f9; border-radius:10px; margin:5px -6px 2px;">
+          <div style="font-size:14px; font-weight:700;">ภาพรวมทั้งหมด</div>
+          <div style="text-align:center; font-size:13px; color:#5f6b7a; font-variant-numeric:tabular-nums;">{{ ovGrand.count }}</div>
+          <div style="text-align:center; font-size:13px; font-weight:600; color:{{ ovGrand.badColor }}; font-variant-numeric:tabular-nums;">{{ ovGrand.bad }}</div>
+          <div style="text-align:right; font-size:16px; font-weight:700; color:{{ ovGrand.nowColor }}; font-variant-numeric:tabular-nums;">{{ ovGrand.now }}</div>
+          <div style="text-align:right; font-size:13px; color:#9aa3b0; font-variant-numeric:tabular-nums;">{{ ovGrand.excl }}</div>
+          <div></div>
         </div>
-      )}
-    </header>
-  );
-}
-
-// ── Overview Tab ─────────────────────────────────────────────────────────────
-function OverviewTab({data,isWide,setTab,setCat,setDcFocus}) {
-  const {ab,cc,abcc,months} = data;
-  const li = latestIdx(abcc.dcs,'all');
-  const pi = li-1>=0?li-1:-1;
-
-  const grandAll = (sheet,m) => avg(sheet.dcs.map(d=>d.all[m]));
-  const grandExcl= (sheet,m) => avg(sheet.dcs.map(d=>d.excl[m]));
-
-  const allNow=grandAll(abcc,li), allPrev=pi>=0?grandAll(abcc,pi):null;
-  const exclNow=grandExcl(abcc,li), exclPrev=pi>=0?grandExcl(abcc,pi):null;
-
-  const badCount = abcc.dcs.filter(d=>d.all[li]!==null&&d.all[li]<90).length;
-  const badPrev  = pi>=0?abcc.dcs.filter(d=>d.all[pi]!==null&&d.all[pi]<90).length:null;
-
-  const allD=fmtDelta(allNow,allPrev), exclD=fmtDelta(exclNow,exclPrev);
-  const badD=fmtDelta(badCount,badPrev);
-
-  const worstM = months.map((m,i)=>({i,v:grandAll(abcc,i)})).filter(x=>x.v!==null).sort((a,b)=>a.v-b.v)[0];
-
-  const ovRegions = REGIONS.map(r=>{
-    const rdcs=abcc.dcs.filter(d=>d.region===r.id);
-    if(!rdcs.length)return null;
-    const now=avg(rdcs.map(d=>d.all[li])), prev=pi>=0?avg(rdcs.map(d=>d.all[pi])):null;
-    const exclNow=avg(rdcs.map(d=>d.excl[li]));
-    const {color:nowColor}=cellColor(now); const d=fmtDelta(now,prev);
-    const bad=rdcs.filter(d=>d.all[li]!==null&&d.all[li]<90).length;
-    return { id:r.id, name:r.name, now:fmt(now), nowColor, excl:fmt(exclNow),
-      dArrow:d.arrow, delta:d.str, dColor:d.color,
-      dot:dotColor(now), count:rdcs.length, bad, badColor:bad>0?'#dd5043':'#2e8a4a',
-      bars:months.map((_,i)=>avg(rdcs.map(dc=>dc.all[i])))
-    };
-  }).filter(Boolean).sort((a,b)=>parseFloat(b.now)-parseFloat(a.now));
-
-  const grand={now:fmt(allNow),nowColor:cellColor(allNow).color,excl:fmt(exclNow),
-    count:abcc.dcs.length,bad:badCount,badColor:badCount>0?'#dd5043':'#2e8a4a'};
-
-  const sortedDcs=[...abcc.dcs].filter(d=>d.all[li]!==null).sort((a,b)=>a.all[li]-b.all[li]);
-  const worstDcs=sortedDcs.slice(0,6);
-  const topDcs=[...sortedDcs].reverse().slice(0,6);
-
-  const trendAll = months.map((_,i)=>grandAll(abcc,i));
-  const trendGen = months.map((_,i)=>grandAll(ab,i));
-  const trendCold= months.map((_,i)=>grandAll(cc,i));
-  const trendAllExcl = months.map((_,i)=>grandExcl(abcc,i));
-  const trendGenExcl = months.map((_,i)=>grandExcl(ab,i));
-  const trendColdExcl= months.map((_,i)=>grandExcl(cc,i));
-
-  const monthLabel=months[li]?.label||'';
-
-  function DcRow({dc}) {
-    const v=dc.all[li], prev=pi>=0?dc.all[pi]:null;
-    const d=fmtDelta(v,prev);
-    return (
-      <div onClick={()=>{setTab('dc');setDcFocus(dc.name);}}
-        style={{display:'flex',alignItems:'center',gap:9,padding:'5px 11px',borderRadius:10,cursor:'pointer'}}
-        onMouseEnter={e=>e.currentTarget.style.background='#f6f8f9'}
-        onMouseLeave={e=>e.currentTarget.style.background=''}>
-        <div style={{width:7,height:7,borderRadius:'50%',background:dotColor(v),flexShrink:0}}/>
-        <div style={{minWidth:0,flex:1,fontSize:'clamp(11px,2.9vw,13px)',fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{dc.name}</div>
-        <div style={{fontSize:'clamp(13px,3.5vw,16px)',fontWeight:700,color:cellColor(v).color,fontVariantNumeric:'tabular-nums',flexShrink:0}}>{fmt(v)}</div>
-        <div style={{fontSize:'clamp(9px,2.4vw,10.5px)',color:d.color,fontWeight:600,fontVariantNumeric:'tabular-nums',flexShrink:0,minWidth:44,textAlign:'right'}}>{d.arrow} {d.str}</div>
+        </sc-if>
       </div>
-    );
-  }
 
-  return (
-    <section>
-      {/* Summary cards */}
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,flexWrap:'wrap',marginBottom:11}}>
-        <div style={{fontSize:14,fontWeight:700}}>ภาพรวมเดือนล่าสุด</div>
-        <div style={{fontSize:'clamp(9px,2.3vw,10px)',color:'#8b96a4'}}>{monthLabel} · ข้อมูลรวมทุกหมวด</div>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(145px,1fr))',gap:12,marginBottom:16}}>
-        {[
-          {label:'SLA ทุกสาเหตุ',val:fmt(allNow),d:allD,valC:cellColor(allNow).color},
-          {label:'SLA ตัดสาเหตุลูกค้า',val:fmt(exclNow),d:exclD,valC:cellColor(exclNow).color},
-          {label:'DC ต่ำกว่า 90%',val:badCount,d:{...badD,color:badD.arrow==='▲'?'#dd5043':badD.arrow==='▼'?'#2e8a4a':'#9aa3b0'},valC:badCount>3?'#dd5043':'#2e8a4a'},
-        ].map(({label,val,d,valC})=>(
-          <div key={label} style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'11px 16px'}}>
-            <div style={{fontSize:12,color:'#3a4654',fontWeight:600}}>{label}</div>
-            <div style={{fontSize:'clamp(20px,5.4vw,23px)',fontWeight:700,marginTop:5,fontVariantNumeric:'tabular-nums',lineHeight:1,color:valC}}>{val}</div>
-            <div style={{fontSize:11,marginTop:4,color:d.color,fontWeight:600}}>{d.arrow} {d.str} <span style={{color:'#8b96a4',fontWeight:400}}>จากเดือนก่อน</span></div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:16px; margin-top:16px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:20px 22px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; gap:10px; flex-wrap:wrap;">
+            <div style="font-size:14px; font-weight:700;">DC ที่ต้องเร่งแก้ไข</div>
+            <div style="font-size:11.5px; color:#8b96a4;">SLA รวม ทุกสาเหตุ ต่ำสุด · {{ monthLabel }}</div>
           </div>
-        ))}
-        {worstM && (
-          <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'11px 16px'}}>
-            <div style={{fontSize:12,color:'#3a4654',fontWeight:600}}>เดือนที่ SLA ต่ำสุด</div>
-            <div style={{fontSize:'clamp(16px,4.5vw,19px)',fontWeight:700,marginTop:5,lineHeight:1.1,color:'#dd5043'}}>{months[worstM.i]?.label}</div>
-            <div style={{fontSize:11,marginTop:4,color:'#8b96a4'}}>SLA เฉลี่ย {fmt(worstM.v)}%</div>
-          </div>
-        )}
-      </div>
-
-      {/* Trend charts */}
-      <div style={{marginBottom:16}}>
-        <TrendChart all={trendAll} excl={trendAllExcl} months={months} title="แนวโน้ม SLA รวม (AB+CC)"/>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:16,marginBottom:16}}>
-        <TrendChart all={trendGen} excl={trendGenExcl} months={months} title="แนวโน้ม SLA ทั่วไป (AB)"/>
-        <TrendChart all={trendCold} excl={trendColdExcl} months={months} title="แนวโน้ม SLA Coldchain (CC)"/>
-      </div>
-
-      {/* Region table */}
-      <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'18px 20px 14px',marginBottom:16}}>
-        <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:12,gap:10,flexWrap:'wrap'}}>
-          <div style={{fontSize:14,fontWeight:700}}>SLA ตามภาค · {monthLabel}</div>
-          <div style={{fontSize:11.5,color:'#8b96a4'}}>รวมทุกหมวด · ทุกสาเหตุ</div>
-        </div>
-        {isWide ? (
-          <>
-            <div style={{display:'grid',gridTemplateColumns:'minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(140px,2.3fr)',gap:10,alignItems:'center',padding:'0 6px 9px',borderBottom:'1px solid #eef1f4',fontSize:11,color:'#8b96a4',fontWeight:600}}>
-              <div>ภาค</div><div style={{textAlign:'center'}}>DC</div><div style={{textAlign:'center'}}>ต่ำกว่า 90</div>
-              <div style={{textAlign:'right'}}>ทุกสาเหตุ</div><div style={{textAlign:'right'}}>ตัดลูกค้า</div><div style={{textAlign:'right'}}>แนวโน้มรายเดือน</div>
-            </div>
-            {ovRegions.map(r=>(
-              <div key={r.id} style={{display:'grid',gridTemplateColumns:'minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(140px,2.3fr)',gap:10,alignItems:'center',padding:'6px 6px',borderBottom:'1px solid #f3f5f7'}}>
-                <div>
-                  <div style={{fontSize:14,fontWeight:600}}>{r.name}</div>
-                  <div style={{fontSize:11,color:r.dColor,fontWeight:600,marginTop:2}}>{r.dArrow} {r.delta} <span style={{color:'#9aa3b0',fontWeight:400}}>จากเดือนก่อน</span></div>
-                </div>
-                <div style={{textAlign:'center',fontSize:13,color:'#5f6b7a',fontVariantNumeric:'tabular-nums'}}>{r.count}</div>
-                <div style={{textAlign:'center',fontSize:13,fontWeight:600,color:r.badColor,fontVariantNumeric:'tabular-nums'}}>{r.bad}</div>
-                <div style={{textAlign:'right',fontSize:16,fontWeight:700,color:r.nowColor,fontVariantNumeric:'tabular-nums'}}>{r.now}</div>
-                <div style={{textAlign:'right',fontSize:13,color:'#9aa3b0',fontVariantNumeric:'tabular-nums'}}>{r.excl}</div>
-                <div style={{display:'flex',justifyContent:'flex-end'}}><SparkBars values={r.bars}/></div>
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <sc-for list="{{ worstOv }}" as="d" hint-placeholder-count="6">
+              <div onClick="{{ d.onClick }}" style="display:flex; align-items:center; gap:9px; padding:5px 11px; border-radius:10px; background:{{ d.bg }}; cursor:pointer;">
+                <div style="width:7px; height:7px; border-radius:50%; background:{{ d.dot }}; flex-shrink:0;"></div>
+                <div style="min-width:0; flex:1; font-size:clamp(11px,2.9vw,13px); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+                <div style="font-size:clamp(13.5px,3.6vw,16px); font-weight:700; color:{{ d.color }}; font-variant-numeric:tabular-nums; text-align:right; flex-shrink:0;">{{ d.v }}</div>
+                <div style="font-size:clamp(9px,2.4vw,10.5px); color:{{ d.cc }}; font-weight:600; font-variant-numeric:tabular-nums; flex-shrink:0; min-width:44px; text-align:right;">{{ d.ca }} {{ d.cs }}</div>
               </div>
-            ))}
-            <div style={{display:'grid',gridTemplateColumns:'minmax(130px,1.15fr) minmax(46px,0.55fr) minmax(72px,0.8fr) minmax(78px,0.9fr) minmax(66px,0.8fr) minmax(140px,2.3fr)',gap:10,alignItems:'center',padding:'9px 12px',background:'#f6f8f9',borderRadius:10,margin:'5px -6px 2px'}}>
-              <div style={{fontSize:14,fontWeight:700}}>ภาพรวมทั้งหมด</div>
-              <div style={{textAlign:'center',fontSize:13,color:'#5f6b7a',fontVariantNumeric:'tabular-nums'}}>{grand.count}</div>
-              <div style={{textAlign:'center',fontSize:13,fontWeight:600,color:grand.badColor,fontVariantNumeric:'tabular-nums'}}>{grand.bad}</div>
-              <div style={{textAlign:'right',fontSize:16,fontWeight:700,color:grand.nowColor,fontVariantNumeric:'tabular-nums'}}>{grand.now}</div>
-              <div style={{textAlign:'right',fontSize:13,color:'#9aa3b0',fontVariantNumeric:'tabular-nums'}}>{grand.excl}</div>
-              <div/>
-            </div>
-          </>
-        ) : (
-          <div style={{display:'flex',flexDirection:'column',gap:5}}>
-            {ovRegions.map(r=>(
-              <div key={r.id} style={{display:'flex',alignItems:'center',gap:9,padding:'5px 11px',borderRadius:10}}>
-                <div style={{width:7,height:7,borderRadius:'50%',background:r.dot,flexShrink:0}}/>
-                <div style={{minWidth:0,flex:1,fontSize:'clamp(11px,2.9vw,13px)',fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
-                <div style={{fontSize:'clamp(13.5px,3.6vw,16px)',fontWeight:700,color:r.nowColor,fontVariantNumeric:'tabular-nums',textAlign:'right',flexShrink:0}}>{r.now}</div>
-                <div style={{fontSize:'clamp(9px,2.4vw,10.5px)',color:r.dColor,fontWeight:600,fontVariantNumeric:'tabular-nums',flexShrink:0,minWidth:44,textAlign:'right'}}>{r.dArrow} {r.delta}</div>
-              </div>
-            ))}
-            <div style={{display:'flex',alignItems:'center',gap:9,padding:'7px 11px',borderRadius:10,background:'#f6f8f9',marginTop:3}}>
-              <div style={{width:7,height:7,flexShrink:0}}/>
-              <div style={{minWidth:0,flex:1,fontSize:'clamp(11px,2.9vw,13px)',fontWeight:700}}>ภาพรวมทั้งหมด</div>
-              <div style={{fontSize:'clamp(13.5px,3.6vw,16px)',fontWeight:700,color:grand.nowColor,fontVariantNumeric:'tabular-nums',textAlign:'right',flexShrink:0}}>{grand.now}</div>
-              <div style={{flexShrink:0,minWidth:44}}/>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Worst / Top DC */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(290px,1fr))',gap:16}}>
-        <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'20px 22px'}}>
-          <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:14,gap:10,flexWrap:'wrap'}}>
-            <div style={{fontSize:14,fontWeight:700}}>DC ที่ต้องเร่งแก้ไข</div>
-            <div style={{fontSize:11.5,color:'#8b96a4'}}>SLA รวม · ทุกสาเหตุ · ต่ำสุด · {monthLabel}</div>
-          </div>
-          <div style={{display:'flex',flexDirection:'column',gap:3}}>
-            {worstDcs.map(dc=><DcRow key={dc.name} dc={dc}/>)}
+            </sc-for>
           </div>
         </div>
-        <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'20px 22px'}}>
-          <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:14,gap:10,flexWrap:'wrap'}}>
-            <div style={{fontSize:14,fontWeight:700}}>ผลงานดีเด่น</div>
-            <div style={{fontSize:11.5,color:'#8b96a4'}}>SLA รวม · ทุกสาเหตุ · สูงสุด · {monthLabel}</div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:20px 22px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; gap:10px; flex-wrap:wrap;">
+            <div style="font-size:14px; font-weight:700;">ผลงานดีเด่น</div>
+            <div style="font-size:11.5px; color:#8b96a4;">SLA รวม ทุกสาเหตุ สูงสุด · {{ monthLabel }}</div>
           </div>
-          <div style={{display:'flex',flexDirection:'column',gap:3}}>
-            {topDcs.map(dc=><DcRow key={dc.name} dc={dc}/>)}
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <sc-for list="{{ topOv }}" as="d" hint-placeholder-count="6">
+              <div onClick="{{ d.onClick }}" style="display:flex; align-items:center; gap:9px; padding:5px 11px; border-radius:10px; background:{{ d.bg }}; cursor:pointer;">
+                <div style="width:7px; height:7px; border-radius:50%; background:{{ d.dot }}; flex-shrink:0;"></div>
+                <div style="min-width:0; flex:1; font-size:clamp(11px,2.9vw,13px); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+                <div style="font-size:clamp(13.5px,3.6vw,16px); font-weight:700; color:{{ d.color }}; font-variant-numeric:tabular-nums; text-align:right; flex-shrink:0;">{{ d.v }}</div>
+                <div style="font-size:clamp(9px,2.4vw,10.5px); color:{{ d.cc }}; font-weight:600; font-variant-numeric:tabular-nums; flex-shrink:0; min-width:44px; text-align:right;">{{ d.ca }} {{ d.cs }}</div>
+              </div>
+            </sc-for>
           </div>
         </div>
       </div>
     </section>
-  );
-}
+    </sc-if>
 
-// ── Region Tab ────────────────────────────────────────────────────────────────
-function RegionTab({data,cat,cause,isWide,expanded,setExpanded}) {
-  const sheet = cat==='total'?data.abcc:cat==='cold'?data.cc:data.ab;
-  const {months,dcs} = sheet;
-  const metric = cause;
-  const n=months.length;
-  const li=latestIdx(dcs,metric);
+    <!-- ===================== REGION ===================== -->
+    <sc-if value="{{ showRegion }}">
+    <section data-screen-label="ภาค" style="display:flex; flex-direction:column; gap:11px;">
 
-  // Mobile: last 3 months; Desktop: all months
-  const mobileMs = months.map((_,i)=>i).filter(i=>dcs.some(d=>d[metric][i]!==null)).slice(-3);
-  const shownMs = isWide ? months.map((_,i)=>i) : mobileMs;
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <div style="font-size:clamp(10px,2.6vw,12px); color:#8b96a4;">รายภาค · กดที่ภาคเพื่อกาง DC · ค่าเฉลี่ย SLA รายเดือน (%) · {{ causeLabel }} · หมวด {{ catName }}</div>
+        <div style="display:flex; gap:13px; font-size:11px; color:#8b96a4; align-items:center; flex-wrap:wrap;">
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#e7f0fb;"></span>≥90</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#f1f4f7;"></span>80–89</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#fbeae6;"></span>70–79</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#f6d9d2;"></span>&lt;70</span>
+        </div>
+      </div>
 
-  const causeLabel = cause==='all'?'ทุกสาเหตุ':'ตัดสาเหตุลูกค้า';
-  const catName = cat==='total'?'รวม':cat==='cold'?'Coldchain':'ทั่วไป';
+      <!-- ===== DESKTOP HEATMAP ===== -->
+      <sc-if value="{{ isWide }}">
+      <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:minmax(206px,2fr) repeat(6, minmax(44px,0.92fr)) minmax(48px,0.78fr) minmax(56px,0.85fr); align-items:center; padding:11px 14px 10px; border-bottom:1px solid #eef1f4; background:#fbfcfd;">
+          <div onClick="{{ rgSortName.onClick }}" style="font-size:11px; color:{{ rgSortName.color }}; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:3px; user-select:none;">ภาค / DC<span style="color:#0e5a61; font-size:9px;">{{ rgSortName.arrow }}</span></div>
+          <sc-for list="{{ rgMonthHeads }}" as="m" hint-placeholder-count="6">
+            <div onClick="{{ m.onClick }}" style="font-size:11.5px; font-weight:{{ m.weight }}; color:{{ m.color }}; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; user-select:none;">{{ m.label }}<span style="color:#0e5a61; font-size:9px;">{{ m.arrow }}</span></div>
+          </sc-for>
+          <div onClick="{{ rgSortAvg.onClick }}" style="font-size:11px; color:{{ rgSortAvg.color }}; font-weight:700; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; user-select:none;">เฉลี่ย<span style="color:#0e5a61; font-size:9px;">{{ rgSortAvg.arrow }}</span></div>
+          <div onClick="{{ rgSortDelta.onClick }}" style="font-size:11px; color:{{ rgSortDelta.color }}; font-weight:700; text-align:right; cursor:pointer; display:flex; align-items:center; justify-content:flex-end; gap:2px; user-select:none;">เทียบ<span style="color:#0e5a61; font-size:9px;">{{ rgSortDelta.arrow }}</span></div>
+        </div>
+        <sc-for list="{{ regionsEx }}" as="r" hint-placeholder-count="7">
+          <div style="border-bottom:1px solid #f3f5f7;">
+            <div onClick="{{ r.toggle }}" style="display:grid; grid-template-columns:minmax(206px,2fr) repeat(6, minmax(44px,0.92fr)) minmax(48px,0.78fr) minmax(56px,0.85fr); align-items:center; padding:7px 14px; cursor:pointer; background:{{ r.rowBg }};">
+              <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                <span style="width:14px; text-align:center; color:#b6bfca; font-size:12px; transform:{{ r.caret }}; flex-shrink:0;">▾</span>
+                <span style="width:9px; height:9px; border-radius:50%; background:#1d5fb0; flex-shrink:0;"></span>
+                <span style="flex:1; min-width:0; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.name }}</span>
+                <span style="font-size:10.5px; color:#9aa3b0; font-weight:600; flex-shrink:0; white-space:nowrap;">{{ r.count }} DC</span>
+              </div>
+              <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="6">
+                <div style="margin:2px; padding:7px 1px; border-radius:6px; background:{{ c.bg }}; text-align:center;">
+                  <span style="font-size:13px; font-weight:700; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</span>
+                </div>
+              </sc-for>
+              <div style="margin:2px; padding:7px 1px; border-radius:6px; background:#eef3f6; text-align:center;">
+                <span style="font-size:13px; font-weight:700; color:{{ r.avgAllColor }}; font-variant-numeric:tabular-nums;">{{ r.avgAll }}</span>
+              </div>
+              <div style="text-align:right; font-size:11.5px; font-weight:700; color:{{ r.deltaColor }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ r.deltaArrow }} {{ r.delta }}</div>
+            </div>
+            <sc-if value="{{ r.open }}">
+              <div style="background:#fafbfc; padding:2px 0 6px;">
+                <sc-for list="{{ r.dcs }}" as="d" hint-placeholder-count="4">
+                  <div onClick="{{ d.onClick }}" style="display:grid; grid-template-columns:minmax(206px,2fr) repeat(6, minmax(44px,0.92fr)) minmax(48px,0.78fr) minmax(56px,0.85fr); align-items:center; padding:1px 14px; cursor:pointer;">
+                    <div style="display:flex; align-items:center; gap:8px; min-width:0; padding-left:23px;">
+                      <span style="font-size:10px; font-weight:700; color:#b6bfca; min-width:15px; text-align:center; font-variant-numeric:tabular-nums; flex-shrink:0;">{{ d.rank }}</span>
+                      <span style="flex:1; min-width:0; font-size:12.5px; font-weight:600; color:#3a4654; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</span>
+                    </div>
+                    <sc-for list="{{ d.cells }}" as="c" hint-placeholder-count="6">
+                      <div style="margin:1.5px; padding:5px 1px; border-radius:5px; background:{{ c.bg }}; text-align:center;">
+                        <span style="font-size:11.5px; font-weight:{{ c.weight }}; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</span>
+                      </div>
+                    </sc-for>
+                    <div style="margin:1.5px; padding:5px 1px; border-radius:5px; background:#f4f7f9; text-align:center;">
+                      <span style="font-size:11.5px; font-weight:700; color:{{ d.avgColor }}; font-variant-numeric:tabular-nums;">{{ d.avg }}</span>
+                    </div>
+                    <div style="text-align:right; font-size:10.5px; font-weight:600; color:{{ d.dColor }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.dArrow }} {{ d.delta }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
 
-  const regions = REGIONS.map(r=>{
-    const rdcs=dcs.filter(d=>d.region===r.id);
-    if(!rdcs.length)return null;
-    const cells = shownMs.map(i=>({
-      v: avg(rdcs.map(d=>d[metric][i])),
-      latest: i===li
+      <!-- ===== MOBILE HEATMAP ===== -->
+      <sc-if value="{{ isNarrow }}">
+      <div style="background:#fff; border:1px solid #e4e8ed; border-radius:13px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:minmax(104px,1.5fr) repeat(3, minmax(40px,1fr)) minmax(46px,0.85fr); align-items:center; padding:9px 11px 8px; border-bottom:1px solid #eef1f4; background:#fbfcfd;">
+          <div onClick="{{ rgSortName.onClick }}" style="font-size:10px; color:{{ rgSortName.color }}; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:3px; user-select:none;">ภาค / DC<span style="color:#0e5a61; font-size:8px;">{{ rgSortName.arrow }}</span></div>
+          <sc-for list="{{ rgMonthHeadsM }}" as="m" hint-placeholder-count="3">
+            <div onClick="{{ m.onClick }}" style="font-size:10.5px; font-weight:{{ m.weight }}; color:{{ m.color }}; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:1px; user-select:none;">{{ m.label }}<span style="color:#0e5a61; font-size:8px;">{{ m.arrow }}</span></div>
+          </sc-for>
+          <div onClick="{{ rgSortDelta.onClick }}" style="font-size:10px; color:{{ rgSortDelta.color }}; font-weight:700; text-align:right; cursor:pointer; display:flex; align-items:center; justify-content:flex-end; gap:2px; user-select:none;">เทียบ<span style="color:#0e5a61; font-size:8px;">{{ rgSortDelta.arrow }}</span></div>
+        </div>
+        <sc-for list="{{ regionsEx }}" as="r" hint-placeholder-count="7">
+          <div style="border-bottom:1px solid #f3f5f7;">
+            <div onClick="{{ r.toggle }}" style="display:grid; grid-template-columns:minmax(104px,1.5fr) repeat(3, minmax(40px,1fr)) minmax(46px,0.85fr); align-items:center; padding:6px 11px; cursor:pointer; background:{{ r.rowBg }};">
+              <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                <span style="width:11px; text-align:center; color:#b6bfca; font-size:10px; transform:{{ r.caret }}; flex-shrink:0;">▾</span>
+                <span style="width:7px; height:7px; border-radius:50%; background:#1d5fb0; flex-shrink:0;"></span>
+                <span style="font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;">{{ r.short }}</span>
+                <span style="font-size:9px; color:#9aa3b0; font-weight:600; flex-shrink:0;">{{ r.count }}</span>
+              </div>
+              <sc-for list="{{ r.cellsM }}" as="c" hint-placeholder-count="3">
+                <div style="margin:1.5px; padding:4px 1px; border-radius:5px; background:{{ c.bg }}; text-align:center;">
+                  <span style="font-size:11px; font-weight:700; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</span>
+                </div>
+              </sc-for>
+              <div style="text-align:right; font-size:9.5px; font-weight:700; color:{{ r.deltaColor }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ r.deltaArrow }} {{ r.delta }}</div>
+            </div>
+            <sc-if value="{{ r.open }}">
+              <div style="background:#fafbfc; padding:1px 0 5px;">
+                <sc-for list="{{ r.dcs }}" as="d" hint-placeholder-count="4">
+                  <div onClick="{{ d.onClick }}" style="display:grid; grid-template-columns:minmax(104px,1.5fr) repeat(3, minmax(40px,1fr)) minmax(46px,0.85fr); align-items:center; padding:0 11px; cursor:pointer;">
+                    <div style="display:flex; align-items:center; gap:5px; min-width:0; padding-left:17px;">
+                      <span style="font-size:9px; font-weight:700; color:#b6bfca; min-width:12px; text-align:center; font-variant-numeric:tabular-nums; flex-shrink:0;">{{ d.rank }}</span>
+                      <span style="font-size:11px; font-weight:600; color:#3a4654; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</span>
+                    </div>
+                    <sc-for list="{{ d.cellsM }}" as="c" hint-placeholder-count="3">
+                      <div style="margin:1px; padding:3px 1px; border-radius:4px; background:{{ c.bg }}; text-align:center;">
+                        <span style="font-size:10.5px; font-weight:{{ c.weight }}; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</span>
+                      </div>
+                    </sc-for>
+                    <div style="text-align:right; font-size:9px; font-weight:600; color:{{ d.dColor }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.dArrow }} {{ d.delta }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+    </section>
+    </sc-if>
+
+    <!-- ===================== DC ===================== -->
+    <sc-if value="{{ showDc }}">
+    <section data-screen-label="รายDC">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+        <input value="{{ q }}" onInput="{{ onSearch }}" placeholder="ค้นหาชื่อ DC…" style="flex:1; min-width:180px; padding:10px 14px; border:1px solid #dce1e7; border-radius:10px; font-family:inherit; font-size:13.5px; background:#fff; color:#1b2430; outline:none;">
+      </div>
+      <sc-if value="{{ isWide }}">
+      <div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px;">
+        <sc-for list="{{ regionChips }}" as="c" hint-placeholder-count="6">
+          <button onClick="{{ c.onClick }}" style="padding:7px 14px; border:1px solid {{ c.border }}; border-radius:20px; background:{{ c.bg }}; color:{{ c.color }}; font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;">{{ c.name }}</button>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+        <div style="font-size:clamp(10px,2.6vw,12px); color:#8b96a4;">{{ dcCount }} DC · ค่า SLA รายเดือน (%) · {{ causeLabel }} · กดหัวคอลัมน์เพื่อเรียง</div>
+        <div style="display:flex; gap:13px; font-size:11px; color:#8b96a4; align-items:center; flex-wrap:wrap;">
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#e7f0fb;"></span>≥90</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#f1f4f7;"></span>80–89</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#fbeae6;"></span>70–79</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#f6d9d2;"></span>&lt;70</span>
+        </div>
+      </div>
+
+      <sc-if value="{{ isWide }}">
+      <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:auto; max-height:72vh;">
+        <div style="min-width:540px;">
+          <div style="display:grid; grid-template-columns:minmax(112px,1.5fr) repeat(6, minmax(40px,1fr)) minmax(48px,1fr) minmax(54px,0.9fr); align-items:center; padding:11px 12px 10px; border-bottom:1px solid #eef1f4; position:sticky; top:0; z-index:3; background:#fff; user-select:none;">
+            <div onClick="{{ sortName.onClick }}" style="font-size:clamp(9.5px,2.6vw,11px); color:{{ sortName.color }}; font-weight:700; position:sticky; left:0; z-index:4; background:#fff; padding:11px 12px; margin:-11px -12px; box-shadow:6px 0 6px -4px rgba(0,0,0,0.06); cursor:pointer; display:flex; align-items:center; gap:4px;">DC<span style="color:#0e5a61; font-size:9px;">{{ sortName.arrow }}</span></div>
+            <sc-for list="{{ monthHeads }}" as="m" hint-placeholder-count="6">
+              <div onClick="{{ m.onClick }}" style="font-size:clamp(10px,2.7vw,11.5px); font-weight:{{ m.weight }}; color:{{ m.color }}; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:3px;">{{ m.label }}<span style="color:#0e5a61; font-size:9px;">{{ m.arrow }}</span></div>
+            </sc-for>
+            <div onClick="{{ sortAvg.onClick }}" style="font-size:clamp(9.5px,2.6vw,11px); color:{{ sortAvg.color }}; font-weight:700; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:3px;">เฉลี่ย<span style="color:#0e5a61; font-size:9px;">{{ sortAvg.arrow }}</span></div>
+            <div onClick="{{ sortChange.onClick }}" style="font-size:clamp(9.5px,2.6vw,11px); color:{{ sortChange.color }}; font-weight:700; text-align:right; cursor:pointer; display:flex; align-items:center; justify-content:flex-end; gap:3px;">เทียบ<span style="color:#0e5a61; font-size:9px;">{{ sortChange.arrow }}</span></div>
+          </div>
+          <sc-for list="{{ dcRows }}" as="d" hint-placeholder-count="12">
+            <div onClick="{{ d.onClick }}" style="display:grid; grid-template-columns:minmax(112px,1.5fr) repeat(6, minmax(40px,1fr)) minmax(48px,1fr) minmax(54px,0.9fr); align-items:center; padding:5px 12px; border-bottom:1px solid #f3f5f7; cursor:pointer;">
+              <div style="display:flex; align-items:center; gap:8px; min-width:0; position:sticky; left:0; z-index:1; background:#fff; padding:5px 12px; margin:-5px 6px -5px -12px; box-shadow:6px 0 6px -4px rgba(0,0,0,0.06);">
+                <span style="font-size:clamp(9.5px,2.5vw,11px); font-weight:700; color:#b6bfca; min-width:15px; text-align:center; font-variant-numeric:tabular-nums;">{{ d.rank }}</span>
+                <div style="min-width:0; font-size:clamp(11px,2.9vw,13px); font-weight:600; color:#1b2430; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+              </div>
+              <sc-for list="{{ d.cells }}" as="c" hint-placeholder-count="6">
+                <div style="margin:2px; padding:6px 1px; border-radius:6px; background:{{ c.bg }}; text-align:center;">
+                  <span style="font-size:clamp(10px,2.7vw,12.5px); font-weight:{{ c.weight }}; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</span>
+                </div>
+              </sc-for>
+              <div style="margin:2px; padding:6px 1px; border-radius:6px; background:#f4f7f9; text-align:center;">
+                <span style="font-size:clamp(10px,2.7vw,12.5px); font-weight:700; color:{{ d.avgColor }}; font-variant-numeric:tabular-nums;">{{ d.avg }}</span>
+              </div>
+              <div style="text-align:right; font-size:clamp(9.5px,2.6vw,11.5px); font-weight:600; color:{{ d.dColor }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.dArrow }} {{ d.delta }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isNarrow }}">
+      <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow-y:auto; max-height:70vh;">
+        <div style="display:grid; grid-template-columns:minmax(96px,1.5fr) repeat(3, minmax(40px,1fr)) minmax(46px,0.85fr); align-items:center; padding:9px 10px 8px; border-bottom:1px solid #eef1f4; position:sticky; top:0; z-index:3; background:#fff; user-select:none;">
+          <div onClick="{{ sortName.onClick }}" style="font-size:10px; color:{{ sortName.color }}; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:3px;">DC<span style="color:#0e5a61; font-size:8px;">{{ sortName.arrow }}</span></div>
+          <sc-for list="{{ monthHeadsM }}" as="m" hint-placeholder-count="3">
+            <div onClick="{{ m.onClick }}" style="font-size:10.5px; font-weight:{{ m.weight }}; color:{{ m.color }}; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px;">{{ m.label }}<span style="color:#0e5a61; font-size:8px;">{{ m.arrow }}</span></div>
+          </sc-for>
+          <div onClick="{{ sortChange.onClick }}" style="font-size:10px; color:{{ sortChange.color }}; font-weight:700; text-align:right; cursor:pointer; display:flex; align-items:center; justify-content:flex-end; gap:2px;">เทียบ<span style="color:#0e5a61; font-size:8px;">{{ sortChange.arrow }}</span></div>
+        </div>
+        <sc-for list="{{ dcRows }}" as="d" hint-placeholder-count="12">
+          <div onClick="{{ d.onClick }}" style="display:grid; grid-template-columns:minmax(96px,1.5fr) repeat(3, minmax(40px,1fr)) minmax(46px,0.85fr); align-items:center; padding:1px 10px; border-bottom:1px solid #f3f5f7; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+              <span style="font-size:9.5px; font-weight:700; color:#b6bfca; min-width:13px; text-align:center; font-variant-numeric:tabular-nums;">{{ d.rank }}</span>
+              <div style="min-width:0; font-size:11.5px; font-weight:600; color:#1b2430; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+            </div>
+            <sc-for list="{{ d.cellsM }}" as="c" hint-placeholder-count="3">
+              <div style="margin:1px; padding:3px 1px; border-radius:5px; background:{{ c.bg }}; text-align:center;">
+                <span style="font-size:11px; font-weight:{{ c.weight }}; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</span>
+              </div>
+            </sc-for>
+            <div style="text-align:right; font-size:10px; font-weight:600; color:{{ d.dColor }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.dArrow }} {{ d.delta }}</div>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+    </section>
+    </sc-if>
+
+    <!-- ===================== ANALYSIS ===================== -->
+    <sc-if value="{{ showAnalysis }}">
+    <section data-screen-label="วิเคราะห์">
+
+      <!-- distribution shift -->
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:0 0 11px;">
+        <div style="font-size:14px; font-weight:700;">การกระจายตัวของ DC ตามระดับ SLA</div>
+        <div style="font-size:clamp(9.5px,2.6vw,11.5px); color:#8b96a4;">จำนวน DC ในแต่ละช่วง · รายเดือน · {{ causeLabel }} · หมวด {{ catName }}</div>
+      </div>
+
+      <sc-if value="{{ isWide }}">
+      <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:18px 20px; margin-bottom:22px;">
+        <div style="font-size:11px; color:#9aa3b0; margin-bottom:9px;">ตัวเลข = จำนวน DC (แห่ง) · สีเข้ม = ยิ่งมากในกลุ่มนั้น · กรอบเขียว = เดือนล่าสุด</div>
+        <div style="overflow-x:auto;">
+          <div style="min-width:560px; display:grid; grid-template-columns:minmax(86px,0.9fr) repeat(6,1fr); gap:6px; align-items:center;">
+            <div style="font-size:10.5px; color:#9aa3b0; font-weight:600;">กลุ่ม SLA</div>
+            <sc-for list="{{ an.heat.months }}" as="m" hint-placeholder-count="6">
+              <div style="text-align:center; font-size:11.5px; font-weight:{{ m.weight }}; color:{{ m.color }}; padding-bottom:3px;">{{ m.label }}</div>
+            </sc-for>
+            <sc-for list="{{ an.heat.rows }}" as="r" hint-placeholder-count="4">
+              <div style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; color:#3a4654;">
+                <span style="width:9px; height:9px; border-radius:3px; background:{{ r.dot }}; flex-shrink:0;"></span>{{ r.name }}
+              </div>
+              <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="6">
+                <div style="height:44px; border-radius:8px; background:{{ c.bg }}; box-shadow:{{ c.ring }}; display:flex; align-items:center; justify-content:center; font-size:14.5px; font-weight:700; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</div>
+              </sc-for>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isNarrow }}">
+      <div style="background:#fff; border:1px solid #e4e8ed; border-radius:13px; padding:12px 13px; margin-bottom:18px;">
+        <div style="font-size:9.5px; color:#9aa3b0; margin-bottom:8px;">ตัวเลข = จำนวน DC · สีเข้ม = ยิ่งมาก · กรอบเขียว = เดือนล่าสุด</div>
+        <div style="display:grid; grid-template-columns:minmax(58px,0.85fr) repeat(3,1fr); gap:5px; align-items:center;">
+          <div style="font-size:9px; color:#9aa3b0; font-weight:600;">กลุ่ม SLA</div>
+          <sc-for list="{{ an.heatM.months }}" as="m" hint-placeholder-count="3">
+            <div style="text-align:center; font-size:10px; font-weight:{{ m.weight }}; color:{{ m.color }}; padding-bottom:2px;">{{ m.label }}</div>
+          </sc-for>
+          <sc-for list="{{ an.heatM.rows }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; color:#3a4654;">
+              <span style="width:8px; height:8px; border-radius:3px; background:{{ r.dot }}; flex-shrink:0;"></span>{{ r.name }}
+            </div>
+            <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="3">
+              <div style="height:38px; border-radius:7px; background:{{ c.bg }}; box-shadow:{{ c.ring }}; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</div>
+            </sc-for>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- trajectory quadrant -->
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:0 0 11px;">
+        <div style="font-size:14px; font-weight:700;">ทิศทางแนวโน้ม — ควรเข้าช่วยใครก่อน</div>
+        <div style="font-size:clamp(9.5px,2.6vw,11.5px); color:#8b96a4;">จัดกลุ่มจากระดับล่าสุด × แนวโน้ม 3 เดือนล่าสุด · ตัวเลขเล็ก = การเปลี่ยนแปลงเฉลี่ยต่อเดือน</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(258px,1fr)); gap:14px; margin-bottom:22px;">
+        <sc-for list="{{ an.groupCards }}" as="g" hint-placeholder-count="4">
+          <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+            <div style="background:{{ g.headBg }}; padding:13px 16px; border-bottom:1px solid #eef1f4;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="font-size:13.5px; font-weight:700; color:#1b2430; margin-right:auto;">{{ g.title }}</div>
+                <div style="font-size:19px; font-weight:800; color:{{ g.accent }}; font-variant-numeric:tabular-nums; line-height:1;">{{ g.count }}</div>
+              </div>
+              <div style="font-size:11px; color:#7a8593; margin-top:3px;">{{ g.desc }}</div>
+            </div>
+            <div style="padding:5px 7px 8px;">
+              <sc-for list="{{ g.list }}" as="d" hint-placeholder-count="4">
+                <div onClick="{{ d.onClick }}" style="display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:8px; cursor:pointer;" style-hover="background:#f6f8f9;">
+                  <div style="font-size:12.5px; font-weight:600; color:#1b2430; margin-right:auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+                  <div style="font-size:11px; font-weight:600; color:{{ d.slColor }}; font-variant-numeric:tabular-nums; white-space:nowrap; min-width:44px; text-align:right;">{{ d.slArrow }} {{ d.sl }}</div>
+                  <div style="font-size:13px; font-weight:700; color:#1b2430; font-variant-numeric:tabular-nums; min-width:52px; text-align:right;">{{ d.v }}</div>
+                </div>
+              </sc-for>
+              <div style="font-size:11px; color:#9aa3b0; padding:5px 9px 2px;">{{ g.moreText }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- cause ownership -->
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:0 0 11px;">
+        <div style="font-size:14px; font-weight:700;">แยกที่มาของปัญหา — ของเราหรือของลูกค้า</div>
+        <div style="font-size:clamp(9.5px,2.6vw,11.5px); color:#8b96a4;">เทียบ “ทุกสาเหตุ → ตัดสาเหตุลูกค้า” · เดือนล่าสุด · หมวด {{ catName }}</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:14px; margin-bottom:22px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+          <div style="padding:14px 16px; border-bottom:1px solid #eef1f4;">
+            <div style="font-size:13.5px; font-weight:700;">ส่วนใหญ่มาจากฝั่งลูกค้า</div>
+            <div style="font-size:11px; color:#7a8593; margin-top:3px;">ตัดสาเหตุลูกค้าแล้วดีขึ้นมาก — ควรประสานลูกค้า/ปรับเงื่อนไขจัดส่ง</div>
+          </div>
+          <div style="padding:5px 7px 8px;">
+            <sc-for list="{{ an.fromCust }}" as="d" hint-placeholder-count="6">
+              <div onClick="{{ d.onClick }}" style="display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; cursor:pointer;" style-hover="background:#f6f8f9;">
+                <div style="min-width:0; margin-right:auto;">
+                  <div style="font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+                  <sc-if value="{{ isWide }}"><div style="font-size:10.5px; color:#9aa3b0;">{{ d.regionName }}</div></sc-if>
+                </div>
+                <div style="font-size:11px; color:#7a8593; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.all }} → {{ d.excl }}</div>
+                <div style="font-size:11.5px; font-weight:700; color:#1f9d57; background:#e9f6ee; padding:4px 8px; border-radius:8px; font-variant-numeric:tabular-nums; min-width:48px; text-align:center;">{{ d.gap }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+          <div style="padding:14px 16px; border-bottom:1px solid #eef1f4;">
+            <div style="font-size:13.5px; font-weight:700;">เป็นปัญหาของเราเอง (operation)</div>
+            <div style="font-size:11px; color:#7a8593; margin-top:3px;">ตัดสาเหตุลูกค้าแล้วยังต่ำกว่า 80% — ปัญหาอยู่ที่กระบวนการภายใน</div>
+          </div>
+          <div style="padding:5px 7px 8px;">
+            <sc-for list="{{ an.fromUs }}" as="d" hint-placeholder-count="6">
+              <div onClick="{{ d.onClick }}" style="display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; cursor:pointer;" style-hover="background:#f6f8f9;">
+                <div style="min-width:0; margin-right:auto;">
+                  <div style="font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+                  <sc-if value="{{ isWide }}"><div style="font-size:10.5px; color:#9aa3b0;">{{ d.regionName }}</div></sc-if>
+                </div>
+                <div style="font-size:11px; color:#9aa3b0; font-variant-numeric:tabular-nums; white-space:nowrap;">ตัดลูกค้าแล้ว</div>
+                <div style="font-size:11.5px; font-weight:700; color:#bf372a; background:#fbe5e1; padding:4px 8px; border-radius:8px; font-variant-numeric:tabular-nums; min-width:54px; text-align:center;">{{ d.excl }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+    </section>
+    </sc-if>
+  </main>
+
+  <!-- ===================== DETAIL MODAL ===================== -->
+  <sc-if value="{{ detail }}">
+    <div onClick="{{ closeDc }}" style="position:fixed; inset:0; z-index:60; background:rgba(20,28,38,0.42); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; padding:18px;">
+      <div onClick="{{ stop }}" style="background:#fff; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; border-radius:18px; padding:22px 24px 28px; box-shadow:0 24px 60px rgba(15,30,40,.28);">
+        <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:20px;">
+          <div style="margin-right:auto;">
+            <div style="font-size:19px; font-weight:700;">{{ detail.name }}</div>
+            <div style="font-size:12.5px; color:#8b96a4; margin-top:2px;">{{ detail.regionName }} · หมวด {{ catName }}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:26px; font-weight:700; color:{{ detail.color }}; font-variant-numeric:tabular-nums; line-height:1;">{{ detail.v }}</div>
+            <div style="font-size:11px; font-weight:600; color:{{ detail.color }}; background:{{ detail.bg }}; padding:2px 9px; border-radius:20px; display:inline-block; margin-top:6px;">{{ detail.label }}</div>
+          </div>
+          <button onClick="{{ closeDc }}" style="border:none; background:#eef1f4; width:32px; height:32px; border-radius:9px; font-size:16px; color:#5f6b7a; cursor:pointer; flex-shrink:0;">✕</button>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-bottom:18px;">
+          <div style="flex:1; background:#f6f8f9; border-radius:11px; padding:12px 14px;">
+            <div style="font-size:11.5px; color:#7a8593;">เฉลี่ย · ทุกสาเหตุ</div>
+            <div style="font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px;">{{ detail.avgAll }}</div>
+          </div>
+          <div style="flex:1; background:#f6f8f9; border-radius:11px; padding:12px 14px;">
+            <div style="font-size:11.5px; color:#7a8593;">เฉลี่ย · ตัดสาเหตุลูกค้า</div>
+            <div style="font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px;">{{ detail.avgExcl }}</div>
+          </div>
+        </div>
+
+        <div style="font-size:12.5px; font-weight:700; color:#5f6b7a; margin-bottom:10px;">รายเดือน</div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <sc-for list="{{ detail.rows }}" as="r" hint-placeholder-count="6">
+            <div style="display:flex; align-items:center; gap:12px; padding:8px 10px; border-radius:9px; background:{{ r.rowBg }};">
+              <div style="width:74px; font-size:12.5px; font-weight:600; color:#3a4654; flex-shrink:0;">{{ r.mo }}</div>
+              <div style="flex:1; height:9px; background:#eef1f4; border-radius:5px; overflow:hidden;">
+                <div style="height:100%; width:{{ r.w }}; background:{{ r.c }}; border-radius:5px;"></div>
+              </div>
+              <div style="font-size:13.5px; font-weight:700; font-variant-numeric:tabular-nums; min-width:56px; text-align:right;">{{ r.all }}</div>
+              <div style="font-size:11.5px; color:#9aa3b0; font-variant-numeric:tabular-nums; min-width:54px; text-align:right;">{{ r.excl }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; gap:14px; justify-content:flex-end; margin-top:8px; font-size:10.5px; color:#9aa3b0;">
+          <span>ค่าซ้าย = ทุกสาเหตุ</span><span>ค่าขวา = ตัดสาเหตุลูกค้า</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { SLA: null, loadStatus: 'loading', fetchedAt: null, fallbackCats: [], tab: 'overview', metric: 'all', category: 'total', regionFilter: 'all', sortCol: null, sortDir: 'desc', rSortCol: null, rSortDir: 'desc', q: '', openRegion: null, openDc: null, vw: (typeof window !== 'undefined' ? window.innerWidth : 1200) };
+
+  componentWillUnmount() { if (this._onResize) window.removeEventListener('resize', this._onResize); }
+
+  async componentDidMount() {
+    await this.loadData();
+    this._onResize = () => { const v = window.innerWidth; if (v !== this.state.vw) this.setState({ vw: v }); };
+    window.addEventListener('resize', this._onResize);
+  }
+
+  async loadData() {
+    this.setState({ loadStatus: 'loading' });
+    // 1) ลองดึงสดจาก Google Sheet
+    try {
+      const L = await import('./sla-loader.js');
+      const live = await L.loadLive();
+      this.setState({ SLA: live, loadStatus: 'live', fetchedAt: live.fetchedAt, fallbackCats: live.fallbackCats || [] });
+      return;
+    } catch (e) {
+      console.warn('[SLA] ดึงข้อมูลสดไม่สำเร็จ ใช้ข้อมูลในไฟล์แทน:', e && e.message);
+    }
+    // 2) สำรอง: ข้อมูลฝังในไฟล์
+    try {
+      const m = await import('./sla-data.js');
+      this.setState({ SLA: m.default, loadStatus: 'offline', fetchedAt: null, fallbackCats: [] });
+    } catch (e) { console.error('SLA load failed', e); this.setState({ loadStatus: 'error' }); }
+  }
+
+  st(v) {
+    if (v == null) return { k: 'na', label: 'ไม่มีข้อมูล', color: '#8b96a4', bg: '#eef1f4', dot: '#c4ccd5' };
+    if (v >= 85) return { k: 'good', label: 'สูง', color: '#0f7a43', bg: '#e4f4ea', dot: '#1f9d57' };
+    if (v >= 70) return { k: 'mid', label: 'ปานกลาง', color: '#9a6a08', bg: '#fbf1d9', dot: '#dba31b' };
+    return { k: 'bad', label: 'ต่ำ', color: '#bf372a', bg: '#fbe5e1', dot: '#dd5043' };
+  }
+  avg(arr) { const x = arr.filter(v => v != null); return x.length ? x.reduce((a, b) => a + b, 0) / x.length : null; }
+  fmt(v, d = 1) { return v == null ? '—' : v.toFixed(d) + '%'; }
+  delta(v) {
+    if (v == null) return { s: '—', c: '#8b96a4', a: '' };
+    const sign = v > 0 ? '+' : '';
+    return { s: sign + v.toFixed(1), c: v > 0 ? '#1f9d57' : v < 0 ? '#dd5043' : '#8b96a4', a: v > 0 ? '▲' : v < 0 ? '▼' : '•' };
+  }
+  bars(series) {
+    return series.map((v) => ({
+      h: v == null ? '3%' : Math.max(3, v).toFixed(1) + '%',
+      c: v == null ? '#e2e6ec' : this.st(v).dot,
     }));
-    const allCells = months.map((_,i)=>avg(rdcs.map(d=>d[metric][i])));
-    const now=allCells[li], prev=li>0?allCells[li-1]:null;
-    const d=fmtDelta(now,prev);
-    const dcsSorted=[...rdcs].sort((a,b)=>{
-      const av=a[metric][li]??-1, bv=b[metric][li]??-1;
-      return bv-av;
+  }
+  heatCell(v, cur) {
+    let bg, color;
+    if (v == null) { bg = '#f4f6f8'; color = '#c2cad3'; }
+    else if (v >= 90) { bg = '#e7f0fb'; color = '#1d5fb0'; }
+    else if (v >= 80) { bg = '#f1f4f7'; color = '#1b2430'; }
+    else if (v >= 70) { bg = '#fbeae6'; color = '#c5392b'; }
+    else { bg = '#f6d9d2'; color = '#a82e22'; }
+    return { v: v == null ? '—' : v.toFixed(1), bg, color, weight: cur ? '700' : '600' };
+  }
+  avgC(v) { return v == null ? '#9aa3b0' : (v >= 90 ? '#1d5fb0' : (v < 80 ? '#dd5043' : '#1b2430')); }
+  barsBlue(series) {
+    const lo = 50, span = 95 - lo;
+    const vals = series.filter((v) => v != null);
+    const max = vals.length ? Math.max.apply(null, vals) : null;
+    const min = vals.length ? Math.min.apply(null, vals) : null;
+    return series.map((v) => {
+      if (v == null) return { h: '6%', c: '#e2e6ec' };
+      let c = '#8fbaea';
+      if (v === max) c = '#1d5fb0';
+      else if (v === min) c = '#dd5043';
+      const p = Math.max(0, Math.min(1, (v - lo) / span));
+      return { h: Math.max(7, p * 100).toFixed(1) + '%', c };
     });
-    return { id:r.id, name:r.name, short:r.short, count:rdcs.length, cells,
-      avgAll:fmt(avg(allCells.filter(v=>v!==null))),
-      avgAllColor:cellColor(avg(allCells.filter(v=>v!==null))).color,
-      delta:d.str,deltaArrow:d.arrow,deltaColor:d.color,
-      rowBg:expanded[r.id]?'#f8f9fb':'#fff',
-      dcs: dcsSorted.map((dc,ri)=>{
-        const dcCells = shownMs.map(i=>({v:dc[metric][i],latest:i===li}));
-        const dcAllVals = months.map((_,i)=>dc[metric][i]);
-        const dcNow=dcAllVals[li], dcPrev=li>0?dcAllVals[li-1]:null;
-        const dd=fmtDelta(dcNow,dcPrev);
-        return { name:dc.name, rank:ri+1, cells:dcCells,
-          avg:fmt(avg(dcAllVals.filter(v=>v!==null))),
-          avgColor:cellColor(avg(dcAllVals.filter(v=>v!==null))).color,
-          dArrow:dd.arrow,delta:dd.str,dColor:dd.color };
-      })
+  }
+
+  renderVals() {
+    const s = this.state, SLA = s.SLA;
+    const isNarrow = (s.vw || 1200) < 700;
+    const isAll = s.metric === 'all';
+    const seg = (on) => ({ bg: on ? '#1d5fb0' : 'transparent', color: on ? '#ffffff' : '#5f6b7a', sh: on ? '0 1px 2px rgba(20,50,90,.25)' : 'none' });
+    const tabSel = (on) => ({ bg: on ? '#ffffff' : 'transparent', color: on ? '#0e5a61' : '#5f6b7a', sh: on ? '0 1px 3px rgba(20,28,38,.1)' : 'none' });
+    const a = seg(isAll), e = seg(!isAll);
+    const ov = tabSel(s.tab === 'overview'), rg = tabSel(s.tab === 'region'), dc = tabSel(s.tab === 'dc'), anTab = tabSel(s.tab === 'analysis');
+
+    const catChips = (SLA ? SLA.categories : []).map(c => {
+      const cs = seg(s.category === c.id);
+      return { name: c.name, bg: cs.bg, color: cs.color, sh: cs.sh, onClick: () => this.setState({ category: c.id, openRegion: null, openDc: null }) };
+    });
+
+    // ── สถานะแหล่งข้อมูล + ปุ่มรีเฟรช ──
+    const fmtTime = (t) => {
+      if (!t) return '';
+      const d = new Date(t);
+      const p = (n) => String(n).padStart(2, '0');
+      return p(d.getHours()) + ':' + p(d.getMinutes());
     };
-  }).filter(Boolean);
+    let srcLabel, srcLabelShort, srcDot, srcColor;
+    const fb = (s.fallbackCats || []).length;
+    if (s.loadStatus === 'loading') { srcLabel = 'กำลังโหลด…'; srcLabelShort = 'กำลังโหลด…'; srcDot = '#dba31b'; srcColor = '#9a6a08'; }
+    else if (s.loadStatus === 'live') {
+      srcLabel = 'ข้อมูลสดจาก Sheet · ' + fmtTime(s.fetchedAt) + (fb ? ' (บางหมวดใช้สำรอง)' : '');
+      srcLabelShort = 'ข้อมูล · ' + fmtTime(s.fetchedAt);
+      srcDot = fb ? '#dba31b' : '#1f9d57'; srcColor = fb ? '#9a6a08' : '#0f7a43';
+    }
+    else if (s.loadStatus === 'offline') { srcLabel = 'ข้อมูลสำรองในไฟล์'; srcLabelShort = 'ข้อมูลสำรอง'; srcDot = '#8b96a4'; srcColor = '#5f6b7a'; }
+    else { srcLabel = 'โหลดข้อมูลไม่ได้'; srcLabelShort = 'โหลดไม่ได้'; srcDot = '#dd5043'; srcColor = '#bf372a'; }
+    const busy = s.loadStatus === 'loading';
 
-  const gridCols = isWide
-    ? `minmax(200px,2fr) repeat(${shownMs.length},minmax(42px,1fr)) minmax(48px,0.78fr) minmax(56px,0.85fr)`
-    : `minmax(100px,1.5fr) repeat(${shownMs.length},minmax(40px,1fr)) minmax(44px,0.85fr)`;
+    const head = {
+      loading: !SLA, catChips,
+      srcLabel, srcLabelShort, srcDot, srcColor,
+      refreshLabel: busy ? 'กำลังดึง…' : 'รีเฟรช',
+      refreshSpin: busy ? 'rotate(180deg)' : 'none',
+      refresh: () => { if (!busy) this.loadData(); },
+      setAll: () => this.setState({ metric: 'all' }),
+      setExcl: () => this.setState({ metric: 'excl' }),
+      allBg: a.bg, allColor: a.color, allSh: a.sh,
+      exclBg: e.bg, exclColor: e.color, exclSh: e.sh,
+      setTabOverview: () => this.setState({ tab: 'overview' }),
+      setTabRegion: () => this.setState({ tab: 'region' }),
+      setTabDc: () => this.setState({ tab: 'dc' }),
+      setTabAnalysis: () => this.setState({ tab: 'analysis' }),
+      ovBg: ov.bg, ovColor: ov.color, ovSh: ov.sh,
+      rgBg: rg.bg, rgColor: rg.color, rgSh: rg.sh,
+      dcBg: dc.bg, dcColor: dc.color, dcSh: dc.sh,
+      anBg: anTab.bg, anColor: anTab.color, anSh: anTab.sh,
+      showCatCause: s.tab !== 'overview',
+      isNarrow, isWide: !isNarrow,
+    };
 
-  return (
-    <section style={{display:'flex',flexDirection:'column',gap:11}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
-        <div style={{fontSize:'clamp(10px,2.6vw,12px)',color:'#8b96a4'}}>รายภาค · กดเพื่อกาง DC · {causeLabel} · หมวด {catName}</div>
-        <Legend/>
-      </div>
-      <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'hidden'}}>
-        {/* Header */}
-        <div style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
-          padding:`${isWide?11:9}px ${isWide?14:11}px ${isWide?10:8}px`,
-          borderBottom:'1px solid #eef1f4',background:'#fbfcfd'}}>
-          <div style={{fontSize:isWide?11:10,color:'#8b96a4',fontWeight:700}}>ภาค / DC</div>
-          {shownMs.map(i=>(
-            <div key={i} style={{fontSize:isWide?11.5:10.5,fontWeight:months[i]?.isPartial?700:500,color:months[i]?.isPartial?'#1d5fb0':'#8b96a4',textAlign:'center'}}>
-              {months[i]?.abbr}
-            </div>
-          ))}
-          {isWide&&<div style={{fontSize:11,color:'#8b96a4',fontWeight:700,textAlign:'center'}}>เฉลี่ย</div>}
-          <div style={{fontSize:isWide?11:10,color:'#8b96a4',fontWeight:700,textAlign:'right'}}>เทียบ</div>
-        </div>
-        {/* Rows */}
-        {regions.map(r=>(
-          <div key={r.id} style={{borderBottom:'1px solid #f3f5f7'}}>
-            <div onClick={()=>setExpanded(e=>({...e,[r.id]:!e[r.id]}))}
-              style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
-                padding:`${isWide?7:6}px ${isWide?14:11}px`,cursor:'pointer',background:r.rowBg}}>
-              <div style={{display:'flex',alignItems:'center',gap:isWide?9:6,minWidth:0}}>
-                <span style={{width:isWide?14:11,textAlign:'center',color:'#b6bfca',fontSize:isWide?12:10,
-                  transform:expanded[r.id]?'rotate(0deg)':'rotate(-90deg)',transition:'transform .15s',flexShrink:0}}>▾</span>
-                <span style={{width:isWide?9:7,height:isWide?9:7,borderRadius:'50%',background:'#1d5fb0',flexShrink:0}}/>
-                <span style={{flex:1,minWidth:0,fontSize:isWide?14:12,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                  {isWide?r.name:r.short}
-                </span>
-                <span style={{fontSize:isWide?10.5:9,color:'#9aa3b0',fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>{r.count} DC</span>
-              </div>
-              {r.cells.map((c,ci)=>(
-                <div key={ci} style={{margin:isWide?2:1.5,padding:`${isWide?7:4}px 1px`,borderRadius:isWide?6:5,
-                  background:c.v===null?'transparent':cellColor(c.v).bg,
-                  boxShadow:c.latest?'inset 0 0 0 2px #0e5a61':undefined,textAlign:'center'}}>
-                  <span style={{fontSize:isWide?13:11,fontWeight:700,color:c.v===null?'#d0d7df':cellColor(c.v).color,fontVariantNumeric:'tabular-nums'}}>
-                    {fmt(c.v)}
-                  </span>
-                </div>
-              ))}
-              {isWide&&(
-                <div style={{margin:2,padding:'7px 1px',borderRadius:6,background:'#eef3f6',textAlign:'center'}}>
-                  <span style={{fontSize:13,fontWeight:700,color:r.avgAllColor,fontVariantNumeric:'tabular-nums'}}>{r.avgAll}</span>
-                </div>
-              )}
-              <div style={{textAlign:'right',fontSize:isWide?11.5:9.5,fontWeight:700,color:r.deltaColor,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>
-                {r.deltaArrow} {r.delta}
-              </div>
-            </div>
-            {expanded[r.id]&&(
-              <div style={{background:'#fafbfc',padding:'2px 0 6px'}}>
-                {r.dcs.map(d=>(
-                  <div key={d.name} style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
-                    padding:`${isWide?1:0}px ${isWide?14:11}px`,cursor:'default'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:isWide?8:5,minWidth:0,paddingLeft:isWide?23:17}}>
-                      <span style={{fontSize:isWide?10:9,fontWeight:700,color:'#b6bfca',minWidth:isWide?15:12,textAlign:'center',fontVariantNumeric:'tabular-nums',flexShrink:0}}>{d.rank}</span>
-                      <span style={{flex:1,minWidth:0,fontSize:isWide?12.5:11,fontWeight:600,color:'#3a4654',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name}</span>
-                    </div>
-                    {d.cells.map((c,ci)=>(
-                      <div key={ci} style={{margin:isWide?'1.5px':1,padding:`${isWide?5:3}px 1px`,borderRadius:isWide?5:4,
-                        background:c.v===null?'transparent':cellColor(c.v).bg,
-                        boxShadow:c.latest?'inset 0 0 0 1.5px #0e5a61':undefined,textAlign:'center'}}>
-                        <span style={{fontSize:isWide?11.5:10.5,fontWeight:700,color:c.v===null?'#d0d7df':cellColor(c.v).color,fontVariantNumeric:'tabular-nums'}}>
-                          {fmt(c.v)}
-                        </span>
-                      </div>
-                    ))}
-                    {isWide&&(
-                      <div style={{margin:'1.5px',padding:'5px 1px',borderRadius:5,background:'#f4f7f9',textAlign:'center'}}>
-                        <span style={{fontSize:11.5,fontWeight:700,color:d.avgColor,fontVariantNumeric:'tabular-nums'}}>{d.avg}</span>
-                      </div>
-                    )}
-                    <div style={{textAlign:'right',fontSize:isWide?10.5:9,fontWeight:600,color:d.dColor,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>
-                      {d.dArrow} {d.delta}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
+    const blank = {
+      ...head, catEmpty: false, catName: '', showOverview: false, showRegion: false, showDc: false, showAnalysis: false,
+      an: { bandHead: { hi: '—', hiD: '', hiDColor: '#8b96a4', hiDArrow: '', lo: '—', loD: '', loDColor: '#8b96a4', loDArrow: '', avg: '—', avgD: '', avgDColor: '#8b96a4', avgDArrow: '', total: '—' }, bands: [], groupCards: [], fromCust: [], fromUs: [], vol: [], quick: [], heat: { months: [], rows: [] } },
+      kpi: { monthLabel: '', grand: '—', mom: '', momColor: '#8b96a4', momArrow: '', ytd: '—', topName: '—', topVal: '—', botName: '—', botVal: '—', reporting: 0 },
+      trendCols: [], regionRows: [], regionsEx: [], worst: [], regionChips: [], dcList: [], dcCount: 0,
+      ovCards: [], ovLow: {}, tcTotal: {}, tcGen: {}, tcCold: {}, ovRegions: [], ovGrand: {}, worstOv: [], topOv: [],
+      regionScores: [], regionTrend: { labels: [], series: [], latest: 0, subtitle: '' },
+      q: s.q, sortName: {}, sortAvg: {}, sortChange: {}, detail: null, monthLabel: '',
+    };
 
-// ── DC Tab ────────────────────────────────────────────────────────────────────
-function DCTab({data,cat,cause,isWide,dcFocus}) {
-  const sheet = cat==='total'?data.abcc:cat==='cold'?data.cc:data.ab;
-  const {months,dcs} = sheet;
-  const metric = cause;
-  const li=latestIdx(dcs,metric);
+    if (!SLA) return blank;
 
-  const [q, setQ] = useState(dcFocus||'');
-  const [regionF, setRegionF] = useState('all');
-  const [sortKey, setSortKey] = useState('latest');
-  const [sortDir, setSortDir] = useState(-1); // -1=desc, 1=asc
+    const catName = (SLA.categories.find(c => c.id === s.category) || {}).name || '';
+    const CD = SLA.dataByCat[s.category];
+    if (!CD || !CD.dcs) return { ...blank, catEmpty: true, catName };
 
-  useEffect(()=>{ if(dcFocus) setQ(dcFocus); },[dcFocus]);
+    const M = s.metric, mo = SLA.latestMonth, months = SLA.months, dcsRaw = CD.dcs, grandRaw = CD.grand;
+    const monthLabel = SLA.monthsFull[mo];
+    const regName = (id) => SLA.regions.find(r => r.id === id).name;
 
-  const causeLabel = cause==='all'?'ทุกสาเหตุ':'ตัดสาเหตุลูกค้า';
-  const catName = cat==='total'?'รวม':cat==='cold'?'Coldchain':'ทั่วไป';
+    // ---------- OVERVIEW (independent of category/metric selectors) ----------
+    const TOT = SLA.dataByCat.total, GEN = SLA.dataByCat.general, COLD = SLA.dataByCat.cold;
+    const totA = TOT.grand.all, totE = TOT.grand.excl;
+    const ovCard = (label, grand) => {
+      const v = grand.all[mo], pv = mo > 0 ? grand.all[mo - 1] : null;
+      const dd = this.delta((v != null && pv != null) ? v - pv : null);
+      return { label, sub: monthLabel, val: this.fmt(v), delta: dd.s, dColor: dd.c, dArrow: dd.a };
+    };
+    const ovCards = [ovCard('SLA ภาพรวม', TOT.grand), ovCard('SLA ทั่วไป', GEN.grand), ovCard('SLA Coldchain', COLD.grand)];
+    let minI = 0; totA.forEach((v, i) => { if (v != null && (totA[minI] == null || v < totA[minI])) minI = i; });
+    const ovLow = { label: 'เดือน SLA ต่ำสุด', month: months[minI], val: this.fmt(totA[minI]) };
+    const tcOf = (grand) => ({ all: grand.all, excl: grand.excl, labels: months, latest: mo });
+    const tcTotal = tcOf(TOT.grand), tcGen = tcOf(GEN.grand), tcCold = tcOf(COLD.grand);
+    const totDcs = TOT.dcs;
+    const ovRegions = SLA.regions.map(r => {
+      const list = totDcs.filter(d => d.region === r.id);
+      const aS = months.map((_, i) => this.avg(list.map(d => d.all[i])));
+      const eS = months.map((_, i) => this.avg(list.map(d => d.excl[i])));
+      const now = aS[mo], pv = mo > 0 ? aS[mo - 1] : null;
+      const dl = this.delta((now != null && pv != null) ? now - pv : null);
+      const badN = list.filter(d => d.all[mo] != null && d.all[mo] < 90).length;
+      return { name: r.name, count: list.length, bad: badN === 0 ? '—' : String(badN), badColor: badN > 0 ? '#3a4654' : '#9aa3b0', bars: this.barsBlue(aS), ytd: this.fmt(this.avg(aS)), now: this.fmt(now), nowColor: this.st(now).color, dot: this.st(now).dot, excl: this.fmt(eS[mo]), delta: dl.s, dColor: dl.c, dArrow: dl.a, sortv: now == null ? -1 : now };
+    }).sort((x, y) => y.sortv - x.sortv);
+    const ovNowVals = ovRegions.filter(r => r.sortv >= 0).map(r => r.sortv);
+    const ovNowMax = ovNowVals.length ? Math.max.apply(null, ovNowVals) : null;
+    const ovNowMin = ovNowVals.length ? Math.min.apply(null, ovNowVals) : null;
+    ovRegions.forEach(r => { r.nowColor = r.sortv < 0 ? '#8b96a4' : (r.sortv === ovNowMax ? '#1d5fb0' : (r.sortv === ovNowMin ? '#dd5043' : '#1b2430')); });
+    const totBad = totDcs.filter(d => d.all[mo] != null && d.all[mo] < 90).length;
+    const ovGrand = { count: totDcs.length, bad: totBad === 0 ? '—' : String(totBad), badColor: totBad > 0 ? '#3a4654' : '#9aa3b0', ytd: this.fmt(this.avg(totA)), now: this.fmt(totA[mo]), nowColor: '#1b2430', excl: this.fmt(totE[mo]) };
+    const ovRank = (dir) => totDcs
+      .map(d => { const v = d.all[mo], pv = mo > 0 ? d.all[mo - 1] : null; return { name: d.name, region: d.region, v, ch: (v != null && pv != null) ? v - pv : null }; })
+      .filter(d => d.v != null)
+      .sort((a, b) => dir * (a.v - b.v))
+      .slice(0, 6)
+      .map(d => { const stt = this.st(d.v), dd = this.delta(d.ch); return { name: d.name, regionName: regName(d.region), v: this.fmt(d.v), color: stt.color, bg: stt.bg, dot: stt.dot, ca: dd.a, cc: dd.c, cs: dd.s, onClick: () => this.setState({ openDc: d.name, category: 'total' }) }; });
+    const worstOv = ovRank(1);
+    const topOv = ovRank(-1);
 
-  // Mobile: last 3 months; Desktop: all months
-  const shownMs = useMemo(()=>{
-    const all = months.map((_,i)=>i).filter(i=>dcs.some(d=>d[metric][i]!==null));
-    return isWide ? all : all.slice(-3);
-  },[months,dcs,metric,isWide]);
-
-  const filtered = useMemo(()=>{
-    let rows = dcs.filter(d=>{
-      if(q && !d.name.toLowerCase().includes(q.toLowerCase())) return false;
-      if(regionF!=='all' && d.region!==regionF) return false;
-      return true;
+    const en = dcsRaw.map(d => {
+      const ser = d[M], v = ser[mo], prev = mo > 0 ? ser[mo - 1] : null;
+      return { name: d.name, region: d.region, regionName: regName(d.region), series: ser, v, avgRaw: this.avg(ser), ch: (v != null && prev != null) ? v - prev : null, st: this.st(v), bars: this.bars(ser) };
     });
-    rows = rows.map(dc=>{
-      const vals = months.map((_,i)=>dc[metric][i]);
-      const validVals = vals.filter(v=>v!==null);
-      const dcAvg = avg(validVals);
-      const now=vals[li], prev=li>0?vals[li-1]:null;
-      const d=fmtDelta(now,prev);
-      const signedDelta=(now!==null&&prev!==null)?now-prev:null;
-      return { ...dc, vals, dcAvg, dcAvgFmt:fmt(dcAvg), avgColor:cellColor(dcAvg).color,
-        dArrow:d.arrow, delta:d.str, dColor:d.color, signedDelta,
-        cells: shownMs.map(i=>({v:vals[i],latest:i===li})),
+    const openDetail = (name) => () => this.setState({ openDc: name });
+
+    // KPIs (ไม่มีเป้า)
+    const g = grandRaw[M], gv = g[mo], gprev = mo > 0 ? g[mo - 1] : null;
+    const md = this.delta((gv != null && gprev != null) ? gv - gprev : null);
+    const rep = en.filter(d => d.v != null);
+    const byVal = [...rep].sort((x, y) => y.v - x.v);
+    const top = byVal[0], bot = byVal[byVal.length - 1];
+    const kpi = {
+      monthLabel, grand: this.fmt(gv), mom: md.s, momColor: md.c, momArrow: md.a,
+      ytd: this.fmt(this.avg(g)),
+      topName: top ? top.name : '—', topVal: top ? this.fmt(top.v) : '—',
+      botName: bot ? bot.name : '—', botVal: bot ? this.fmt(bot.v) : '—',
+      reporting: rep.length,
+    };
+
+    const trendCols = g.map((v, i) => ({ h: v == null ? '3%' : v.toFixed(1) + '%', val: v == null ? '—' : v.toFixed(1), label: months[i], c: i === mo ? '#0e5a61' : '#aebfc0' }));
+
+    const regColor = { north: '#794747', northeast: '#1d5fb0', central: '#5bb226', east: '#EB0000', south: '#FF0099', west: '#7303c0', bkk: '#f7b733' };
+
+    // ── sort หน้าภาค (คลิกหัวคอลัมน์) ──
+    const rCol = s.rSortCol || ('m' + mo);              // ค่าเริ่มต้น: เดือนล่าสุด มาก→น้อย
+    const rDir = s.rSortCol ? s.rSortDir : 'desc';
+    const rClickSort = (col, defDir) => () => this.setState(st => (st.rSortCol === col) ? { rSortDir: st.rSortDir === 'desc' ? 'asc' : 'desc' } : { rSortCol: col, rSortDir: defDir });
+    const rArrow = (col) => rCol === col ? (rDir === 'desc' ? '▼' : '▲') : '';
+    const rCmp = (a, b) => {
+      if (rCol === 'name') return rDir === 'asc' ? String(a.name).localeCompare(b.name, 'th') : String(b.name).localeCompare(a.name, 'th');
+      let av, bv;
+      if (rCol === 'avg') { av = a._avgVal; bv = b._avgVal; }
+      else if (rCol === 'delta') { av = a._deltaVal; bv = b._deltaVal; }
+      else { const i = +rCol.slice(1); av = a._series ? a._series[i] : null; bv = b._series ? b._series[i] : null; }
+      av = av == null ? -Infinity : av; bv = bv == null ? -Infinity : bv;
+      return rDir === 'asc' ? av - bv : bv - av;
+    };
+
+    const regionsEx = SLA.regions.map(r => {
+      const list = en.filter(d => d.region === r.id);
+      const series = months.map((_, i) => this.avg(dcsRaw.filter(d => d.region === r.id).map(d => d[M][i])));
+      const avgNow = series[mo], avgPrev = mo > 0 ? series[mo - 1] : null;
+      const dl = this.delta((avgNow != null && avgPrev != null) ? avgNow - avgPrev : null);
+      const avgAll = this.avg(series);
+      const rCells = series.map((v, i) => this.heatCell(v, i === mo));
+      const dcObjs = list.map(d => {
+        const v = d.v == null ? null : Math.round(d.v * 10) / 10;
+        let numC;
+        if (v == null) numC = '#9aa3b0';
+        else if (v >= 90) numC = '#1d5fb0';
+        else if (v < 80) numC = '#dd5043';
+        else numC = '#1b2430';
+        const dd = this.delta(d.ch);
+        const dCells = d.series.map((val, idx) => this.heatCell(val, idx === mo));
+        const dAvg = this.avg(d.series);
+        return { name: d.name, v: this.fmt(d.v), numC, delta: dd.s, dColor: dd.c, dArrow: dd.a, onClick: openDetail(d.name), cells: dCells, cellsM: dCells.slice(-3), avg: dAvg == null ? '—' : dAvg.toFixed(1), avgColor: this.avgC(dAvg), _series: d.series, _avgVal: dAvg, _deltaVal: d.ch };
+      });
+      dcObjs.sort(rCmp);
+      const dcsRanked = dcObjs.map((o, i) => Object.assign({ rank: i + 1 }, o));
+      return {
+        id: r.id, name: r.name, short: r.short, count: list.length, series,
+        avg: this.fmt(avgNow), avgRaw: avgNow == null ? -1 : avgNow, w: (avgNow == null ? 0 : avgNow) + '%',
+        nowColor: this.st(avgNow).k === 'mid' ? '#1b2430' : this.st(avgNow).color, lineColor: regColor[r.id] || '#8b96a4',
+        color: this.st(avgNow).dot, delta: dl.s, deltaColor: dl.c, deltaArrow: dl.a,
+        deltaBg: dl.c === '#1f9d57' ? '#e9f6ee' : dl.c === '#dd5043' ? '#fbeae6' : '#f1f4f7',
+        bad: list.filter(d => d.v != null && d.v < 70).length, ytd: this.fmt(this.avg(series)),
+        bars: this.bars(series), open: s.openRegion === r.id,
+        rowBg: s.openRegion === r.id ? '#f5f9f9' : '#fff',
+        cells: rCells, cellsM: rCells.slice(-3),
+        avgAll: avgAll == null ? '—' : avgAll.toFixed(1), avgAllColor: this.avgC(avgAll),
+        caret: s.openRegion === r.id ? 'rotate(180deg)' : 'none',
+        toggle: () => this.setState(st => ({ openRegion: st.openRegion === r.id ? null : r.id })),
+        _series: series, _avgVal: avgAll, _deltaVal: (avgNow != null && avgPrev != null) ? avgNow - avgPrev : null,
+        dcs: dcsRanked,
+      };
+    }).sort(rCmp);
+
+    const rgMonthHeads = months.map((m, idx) => {
+      const col = 'm' + idx, hot = rCol === col;
+      return { label: m, color: (hot || idx === mo) ? '#0e5a61' : '#8b96a4', weight: (hot || idx === mo) ? '700' : '600', arrow: rArrow(col), onClick: rClickSort(col, 'desc') };
+    });
+    const rgMonthHeadsM = rgMonthHeads.slice(-3);
+    const rgSortName = { arrow: rArrow('name'), color: rCol === 'name' ? '#0e5a61' : '#8b96a4', onClick: rClickSort('name', 'asc') };
+    const rgSortAvg = { arrow: rArrow('avg'), color: rCol === 'avg' ? '#0e5a61' : '#8b96a4', onClick: rClickSort('avg', 'desc') };
+    const rgSortDelta = { arrow: rArrow('delta'), color: rCol === 'delta' ? '#0e5a61' : '#8b96a4', onClick: rClickSort('delta', 'desc') };
+
+    const regionRows = regionsEx.map(r => ({ name: r.name, count: r.count, bad: r.bad, avg: r.avg, w: r.w, color: r.color, delta: r.delta, deltaColor: r.deltaColor }));
+
+    const regionScores = regionsEx.map(r => ({
+      name: r.name, short: r.short, count: r.count, dot: r.lineColor,
+      v: r.avg, vColor: '#1b2430',
+      delta: r.delta, dColor: r.deltaColor, dArrow: r.deltaArrow,
+    }));
+    const regionTrend = {
+      labels: months, latest: mo,
+      subtitle: 'ค่าเฉลี่ย SLA รายเดือน (%) · ' + (isAll ? 'ทุกสาเหตุ' : 'ตัดสาเหตุลูกค้า') + ' · หมวด ' + catName,
+      series: regionsEx.map(r => ({ name: r.name, short: r.short, color: r.lineColor, values: r.series })),
+    };
+
+    const mk = (d) => { const dd = this.delta(d.ch); return { name: d.name, regionName: d.regionName, v: this.fmt(d.v), dot: d.st.dot, color: d.st.color, bg: d.st.bg, cs: dd.s, cc: dd.c, ca: dd.a, onClick: openDetail(d.name) }; };
+    const worst = [...rep].sort((x, y) => x.v - y.v).slice(0, 6).map(mk);
+
+    let list = en;
+    if (s.regionFilter !== 'all') list = list.filter(d => d.region === s.regionFilter);
+    if (s.q.trim()) { const q = s.q.trim(); list = list.filter(d => d.name.indexOf(q) !== -1); }
+    const avgColor = (v) => v == null ? '#9aa3b0' : (v >= 90 ? '#1d5fb0' : (v < 80 ? '#dd5043' : '#1b2430'));
+    const activeCol = s.sortCol == null ? ('m' + mo) : s.sortCol;
+    const activeDir = s.sortDir || 'desc';
+    const clickSort = (col, defDir) => () => this.setState(st => {
+      const cur = st.sortCol == null ? ('m' + mo) : st.sortCol;
+      if (cur === col) return { sortDir: (st.sortDir || 'desc') === 'desc' ? 'asc' : 'desc' };
+      return { sortCol: col, sortDir: defDir };
+    });
+    const sortNum = (d, col) => {
+      if (col === 'avg') return d.avgRaw;
+      if (col === 'change') return d.ch;
+      return d.series[parseInt(col.slice(1), 10)];
+    };
+    const dir = activeDir === 'asc' ? 1 : -1;
+    const cmp = (x, y) => {
+      if (activeCol === 'name') return dir * x.name.localeCompare(y.name, 'th');
+      const xv = sortNum(x, activeCol), yv = sortNum(y, activeCol);
+      const xn = xv == null, yn = yv == null;
+      if (xn && yn) return 0;
+      if (xn) return 1;
+      if (yn) return -1;
+      return dir * (xv - yv);
+    };
+    const cellStyle = (v) => {
+      if (v == null) return { v: '—', bg: '#f4f6f8', color: '#c2cad3' };
+      if (v >= 90) return { v: v.toFixed(1), bg: '#e7f0fb', color: '#1d5fb0' };
+      if (v >= 80) return { v: v.toFixed(1), bg: '#f1f4f7', color: '#1b2430' };
+      if (v >= 70) return { v: v.toFixed(1), bg: '#fbeae6', color: '#c5392b' };
+      return { v: v.toFixed(1), bg: '#f6d9d2', color: '#a82e22' };
+    };
+    const causeLabel = isAll ? 'ทุกสาเหตุ' : 'ตัดสาเหตุลูกค้า';
+    const sortedList = [...list].sort(cmp);
+    const arrowFor = (col) => activeCol === col ? (activeDir === 'desc' ? '▼' : '▲') : '';
+    const monthHeads = months.map((m, idx) => {
+      const col = 'm' + idx, hot = activeCol === col || idx === mo;
+      return { label: m, color: hot ? '#0e5a61' : '#8b96a4', weight: hot ? '700' : '600', arrow: arrowFor(col), onClick: clickSort(col, 'desc') };
+    });
+    const monthHeadsM = monthHeads.slice(-3);
+    const sortName = { arrow: arrowFor('name'), color: activeCol === 'name' ? '#0e5a61' : '#8b96a4', onClick: clickSort('name', 'asc') };
+    const sortAvg = { arrow: arrowFor('avg'), color: activeCol === 'avg' ? '#0e5a61' : '#8b96a4', onClick: clickSort('avg', 'desc') };
+    const sortChange = { arrow: arrowFor('change'), color: activeCol === 'change' ? '#0e5a61' : '#8b96a4', onClick: clickSort('change', 'desc') };
+    const dcRows = sortedList.map((d, i) => {
+      const dd = this.delta(d.ch);
+      const cells = d.series.map((v, idx) => { const c = cellStyle(v); return { v: c.v, bg: c.bg, color: c.color, weight: idx === mo ? '700' : '600' }; });
+      return {
+        rank: i + 1, name: d.name, regionName: d.regionName,
+        cells, cellsM: cells.slice(-3),
+        avg: d.avgRaw == null ? '—' : d.avgRaw.toFixed(1), avgColor: avgColor(d.avgRaw),
+        delta: dd.s, dColor: dd.c, dArrow: dd.a, onClick: openDetail(d.name),
       };
     });
-    rows.sort((a,b)=>{
-      let av,bv;
-      if(sortKey==='name'){av=a.name;bv=b.name;return sortDir*(av<bv?-1:1);}
-      if(sortKey==='avg'){av=a.dcAvg??-999;bv=b.dcAvg??-999;}
-      else if(sortKey==='change'){av=a.signedDelta??-999;bv=b.signedDelta??-999;}
-      else {const mi=parseInt(sortKey);av=a.vals[mi]??-999;bv=b.vals[mi]??-999;}
-      return sortDir*(bv-av);
+
+    const chipSel = (on) => ({ bg: on ? '#0e5a61' : '#fff', color: on ? '#fff' : '#3a4654', border: on ? '#0e5a61' : '#dce1e7' });
+    const regionChips = [{ id: 'all', name: 'ทุกภาค' }].concat(SLA.regions.map(r => ({ id: r.id, name: r.short }))).map(c => {
+      const cs = chipSel(s.regionFilter === c.id);
+      return { name: c.name, bg: cs.bg, color: cs.color, border: cs.border, onClick: () => this.setState({ regionFilter: c.id }) };
     });
-    return rows;
-  },[dcs,metric,months,li,shownMs,q,regionF,sortKey,sortDir]);
 
-  function SortHdr({label,k,right}) {
-    const active=sortKey===k;
-    return (
-      <div onClick={()=>{if(sortKey===k)setSortDir(d=>-d);else{setSortKey(k);setSortDir(-1);}}}
-        style={{cursor:'pointer',display:'flex',alignItems:'center',justifyContent:right?'flex-end':'center',gap:3,
-          fontSize:isWide?11:10,fontWeight:700,color:active?'#0e5a61':'#8b96a4',userSelect:'none'}}>
-        {label}<span style={{fontSize:isWide?9:8,color:'#0e5a61'}}>{active?(sortDir===-1?'▼':'▲'):''}</span>
-      </div>
-    );
-  }
-
-  const gridCols = isWide
-    ? `minmax(110px,1.5fr) repeat(${shownMs.length},minmax(40px,1fr)) minmax(48px,1fr) minmax(54px,0.9fr)`
-    : `minmax(90px,1.5fr) repeat(${shownMs.length},minmax(38px,1fr)) minmax(44px,0.85fr)`;
-
-  return (
-    <section>
-      {/* Search */}
-      <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:14}}>
-        <input value={q} onInput={e=>setQ(e.target.value)} placeholder="ค้นหาชื่อ DC…"
-          style={{flex:1,minWidth:180,padding:'10px 14px',border:'1px solid #dce1e7',borderRadius:10,fontSize:13.5,background:'#fff',color:'#1b2430',outline:'none'}}/>
-      </div>
-      {/* Region chips (desktop) */}
-      {isWide&&(
-        <div style={{display:'flex',gap:7,flexWrap:'wrap',marginBottom:16}}>
-          {[{id:'all',name:'ทั้งหมด'},...REGIONS].map(r=>{
-            const active=regionF===r.id;
-            return <button key={r.id} onClick={()=>setRegionF(r.id)}
-              style={{padding:'7px 14px',border:`1px solid ${active?'#1d5fb0':'#dce1e7'}`,borderRadius:20,
-                background:active?'#e7f0fb':'#fff',color:active?'#1d5fb0':'#5f6b7a',
-                fontFamily:'inherit',fontSize:12.5,fontWeight:600,cursor:'pointer'}}>
-              {r.name||r.short}
-            </button>;
-          })}
-        </div>
-      )}
-      {/* Count + legend */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap',marginBottom:10}}>
-        <div style={{fontSize:'clamp(10px,2.6vw,12px)',color:'#8b96a4'}}>{filtered.length} DC · {causeLabel} · หมวด {catName}</div>
-        <Legend/>
-      </div>
-      {/* Table */}
-      <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'auto',maxHeight:'72vh'}}>
-        <div style={{minWidth:isWide?540:340}}>
-          {/* Header */}
-          <div style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
-            padding:`${isWide?11:9}px ${isWide?12:10}px ${isWide?10:8}px`,
-            borderBottom:'1px solid #eef1f4',position:'sticky',top:0,zIndex:3,background:'#fff',userSelect:'none'}}>
-            <SortHdr label="DC" k="name" right={false}/>
-            {shownMs.map(i=>(
-              <div key={i} onClick={()=>{setSortKey(i);setSortDir(d=>sortKey===i?-d:-1);}}
-                style={{cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:2,
-                  fontSize:isWide?11.5:10.5,fontWeight:months[i]?.isPartial?700:sortKey===i?700:500,
-                  color:sortKey===i?'#0e5a61':months[i]?.isPartial?'#1d5fb0':'#8b96a4'}}>
-                {months[i]?.abbr}
-                <span style={{fontSize:isWide?9:8,color:'#0e5a61'}}>{sortKey===i?(sortDir===-1?'▼':'▲'):''}</span>
-              </div>
-            ))}
-            {isWide&&<SortHdr label="เฉลี่ย" k="avg" right={false}/>}
-            <SortHdr label="เทียบ" k="change" right={true}/>
-          </div>
-          {/* DC rows */}
-          {filtered.map((dc,ri)=>(
-            <div key={dc.name} style={{display:'grid',gridTemplateColumns:gridCols,alignItems:'center',
-              padding:`${isWide?5:1}px ${isWide?12:10}px`,borderBottom:'1px solid #f3f5f7'}}>
-              <div style={{display:'flex',alignItems:'center',gap:isWide?8:6,minWidth:0}}>
-                <span style={{fontSize:isWide?9.5:9,fontWeight:700,color:'#b6bfca',minWidth:isWide?15:13,textAlign:'center',fontVariantNumeric:'tabular-nums',flexShrink:0}}>{ri+1}</span>
-                <div style={{minWidth:0,fontSize:isWide?13:11.5,fontWeight:600,color:'#1b2430',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{dc.name}</div>
-              </div>
-              {dc.cells.map((c,ci)=>(
-                <div key={ci} style={{margin:isWide?2:1,padding:`${isWide?6:3}px 1px`,borderRadius:isWide?6:5,
-                  background:c.v===null?'transparent':cellColor(c.v).bg,
-                  boxShadow:c.latest?'inset 0 0 0 2px #0e5a61':undefined,textAlign:'center'}}>
-                  <span style={{fontSize:isWide?12.5:11,fontWeight:c.latest?700:600,color:c.v===null?'#d0d7df':cellColor(c.v).color,fontVariantNumeric:'tabular-nums'}}>
-                    {fmt(c.v)}
-                  </span>
-                </div>
-              ))}
-              {isWide&&(
-                <div style={{margin:2,padding:'6px 1px',borderRadius:6,background:'#f4f7f9',textAlign:'center'}}>
-                  <span style={{fontSize:12.5,fontWeight:700,color:dc.avgColor,fontVariantNumeric:'tabular-nums'}}>{dc.dcAvgFmt}</span>
-                </div>
-              )}
-              <div style={{textAlign:'right',fontSize:isWide?11.5:10,fontWeight:600,color:dc.dColor,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>
-                {dc.dArrow} {dc.delta}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── Analysis Tab ──────────────────────────────────────────────────────────────
-function AnalysisTab({data,cat,cause,isWide}) {
-  const sheet = cat==='total'?data.abcc:cat==='cold'?data.cc:data.ab;
-  const {months,dcs} = sheet;
-  const metric = cause;
-  const li=latestIdx(dcs,metric);
-  const pi=li>0?li-1:-1;
-
-  const causeLabel = cause==='all'?'ทุกสาเหตุ':'ตัดสาเหตุลูกค้า';
-  const catName = cat==='total'?'รวม':cat==='cold'?'Coldchain':'ทั่วไป';
-
-  // Mobile: last 3 months; Desktop: all months
-  const shownMs = useMemo(()=>{
-    const all = months.map((_,i)=>i).filter(i=>dcs.some(d=>d[metric][i]!==null));
-    return isWide ? all : all.slice(-3);
-  },[months,dcs,metric,isWide]);
-
-  // Distribution heatmap — count DCs in each tier per month
-  const tiers = [
-    {name:'≥90%',dot:'#2f74c9',rgb:'47,116,201',fn:v=>v>=90},
-    {name:'80–89%',dot:'#788292',rgb:'120,132,146',fn:v=>v>=80&&v<90},
-    {name:'70–79%',dot:'#d98a1e',rgb:'217,138,30',fn:v=>v>=70&&v<80},
-    {name:'<70%',dot:'#d6453a',rgb:'214,69,58',fn:v=>v<70},
-  ];
-  const distData = tiers.map(t=>{
-    const counts = shownMs.map(i=>{
-      const vals = dcs.map(d=>d[metric][i]).filter(v=>v!==null);
-      return vals.filter(t.fn).length;
-    });
-    const rmax = Math.max(...counts)||1;
-    return {
-      ...t,
-      cells: shownMs.map((i,ci)=>{
-        const cnt = counts[ci];
-        const a = cnt===0 ? 0.05 : (0.16 + 0.84*(cnt/rmax));
-        const bg=`rgba(${t.rgb},${a.toFixed(3)})`;
-        const textColor = a>0.55?'#fff':'#1b2430';
-        return { v:cnt, bg, color:textColor, ring:i===li?'inset 0 0 0 2px rgba(14,90,97,0.55)':undefined };
-      })
-    };
-  });
-
-  // Trajectory quadrant (based on latest SLA level vs 3-month trend)
-  const trajectoryDcs = dcs.map(dc=>{
-    const v = dc[metric][li];
-    if(v===null) return null;
-    const trend3 = [li-2,li-1,li].filter(i=>i>=0&&dc[metric][i]!==null).map(i=>dc[metric][i]);
-    const trendSlope = trend3.length>=2 ? trend3[trend3.length-1]-trend3[0] : 0;
-    const trendPerM = trend3.length>1 ? trendSlope/(trend3.length-1) : 0;
-    return { ...dc, v, trendPerM };
-  }).filter(Boolean);
-
-  const groups = [
-    { key:'hi-up', title:'ระดับสูง + กำลังดีขึ้น', desc:'SLA ≥90 · แนวโน้มขึ้น', headBg:'#eef9f1', accent:'#2e8a4a',
-      fn: d=>d.v>=90&&d.trendPerM>=0 },
-    { key:'hi-dn', title:'ระดับสูง + กำลังลดลง', desc:'SLA ≥90 · แนวโน้มลง · ต้องเฝ้าระวัง', headBg:'#fff8ec', accent:'#c17d22',
-      fn: d=>d.v>=90&&d.trendPerM<0 },
-    { key:'lo-up', title:'ระดับต่ำ + กำลังฟื้นตัว', desc:'SLA <90 · แนวโน้มขึ้น · กำลังดีขึ้น', headBg:'#ecf5ff', accent:'#1d5fb0',
-      fn: d=>d.v<90&&d.trendPerM>=0 },
-    { key:'lo-dn', title:'ต้องเข้าช่วยเหลือด่วน', desc:'SLA <90 · แนวโน้มลง · เร่งด่วน', headBg:'#fdf0ef', accent:'#dd5043',
-      fn: d=>d.v<90&&d.trendPerM<0 },
-  ].map(g=>{
-    const list = trajectoryDcs.filter(g.fn).sort((a,b)=>a.v-b.v);
-    const show = list.slice(0,5);
-    const more = list.length-show.length;
-    return { ...g, count:list.length, list:show.map(d=>{
-      const sl = fmtDelta(d.v, pi>=0?d[metric][pi]:null);
-      return { name:d.name, v:fmt(d.v), sl:fmt(d.trendPerM), slArrow:d.trendPerM>0.005?'▲':d.trendPerM<-0.005?'▼':'', slColor:d.trendPerM>0.005?'#2e8a4a':d.trendPerM<-0.005?'#dd5043':'#9aa3b0' };
-    }), moreText:more>0?`+${more} DC อื่น`:'' };
-  });
-
-  // Cause analysis — compare "all" vs "excl" to find customer-caused gaps
-  const causeData = sheet.dcs.map(dc=>{
-    const allV=dc.all[li], exclV=dc.excl[li];
-    if(allV===null||exclV===null) return null;
-    const gap=exclV-allV;
-    return { ...dc, allV, exclV, gap };
-  }).filter(Boolean).sort((a,b)=>b.gap-a.gap);
-
-  const fromCust = causeData.filter(d=>d.gap>3).slice(0,8);
-  const internal = causeData.filter(d=>d.gap<=3&&d.exclV<90).sort((a,b)=>a.exclV-b.exclV).slice(0,8);
-
-  const gridDistCols = `minmax(80px,0.9fr) repeat(${shownMs.length},1fr)`;
-
-  return (
-    <section>
-      {/* Distribution heatmap */}
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,flexWrap:'wrap',margin:'0 0 11px'}}>
-        <div style={{fontSize:14,fontWeight:700}}>การกระจายตัวของ DC ตามระดับ SLA</div>
-        <div style={{fontSize:'clamp(9.5px,2.6vw,11.5px)',color:'#8b96a4'}}>{causeLabel} · หมวด {catName}</div>
-      </div>
-      <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,padding:'16px 18px',marginBottom:22}}>
-        <div style={{fontSize:11,color:'#9aa3b0',marginBottom:9}}>ตัวเลข = จำนวน DC (แห่ง) · สีเข้ม = ยิ่งมากในกลุ่มนั้น · กรอบเขียว = เดือนล่าสุด</div>
-        <div style={{overflowX:'auto'}}>
-          <div style={{minWidth:300,display:'grid',gridTemplateColumns:gridDistCols,gap:6,alignItems:'center'}}>
-            <div style={{fontSize:10.5,color:'#9aa3b0',fontWeight:600}}>กลุ่ม SLA</div>
-            {shownMs.map(i=>(
-              <div key={i} style={{textAlign:'center',fontSize:isWide?11.5:10,fontWeight:months[i]?.isPartial?700:500,color:months[i]?.isPartial?'#1d5fb0':'#8b96a4',paddingBottom:3}}>
-                {months[i]?.abbr}
-              </div>
-            ))}
-            {distData.map(row=>(
-              <React.Fragment key={row.name}>
-                <div style={{display:'flex',alignItems:'center',gap:7,fontSize:isWide?12.5:11,fontWeight:700,color:'#3a4654'}}>
-                  <span style={{width:9,height:9,borderRadius:3,background:row.dot,flexShrink:0,display:'inline-block'}}/>
-                  {row.name}
-                </div>
-                {row.cells.map((c,ci)=>(
-                  <div key={ci} style={{height:isWide?44:38,borderRadius:8,background:c.bg,boxShadow:c.ring,
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    fontSize:isWide?14.5:12.5,fontWeight:700,color:c.color,fontVariantNumeric:'tabular-nums'}}>
-                    {c.v}
-                  </div>
-                ))}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Trajectory quadrant */}
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,flexWrap:'wrap',margin:'0 0 11px'}}>
-        <div style={{fontSize:14,fontWeight:700}}>ทิศทางแนวโน้ม — ควรเข้าช่วยใครก่อน</div>
-        <div style={{fontSize:'clamp(9.5px,2.6vw,11.5px)',color:'#8b96a4'}}>จัดกลุ่มจากระดับล่าสุด × แนวโน้ม 3 เดือนล่าสุด</div>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:14,marginBottom:22}}>
-        {groups.map(g=>(
-          <div key={g.key} style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'hidden'}}>
-            <div style={{background:g.headBg,padding:'13px 16px',borderBottom:'1px solid #eef1f4'}}>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <div style={{fontSize:13.5,fontWeight:700,color:'#1b2430',marginRight:'auto'}}>{g.title}</div>
-                <div style={{fontSize:19,fontWeight:800,color:g.accent,fontVariantNumeric:'tabular-nums',lineHeight:1}}>{g.count}</div>
-              </div>
-              <div style={{fontSize:11,color:'#7a8593',marginTop:3}}>{g.desc}</div>
-            </div>
-            <div style={{padding:'5px 7px 8px'}}>
-              {g.list.map(d=>(
-                <div key={d.name} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 8px',borderRadius:8}}>
-                  <div style={{fontSize:12.5,fontWeight:600,color:'#1b2430',marginRight:'auto',minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name}</div>
-                  <div style={{fontSize:11,fontWeight:600,color:d.slColor,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap',minWidth:36,textAlign:'right'}}>{d.slArrow} {Math.abs(parseFloat(d.sl)).toFixed(1)}</div>
-                  <div style={{fontSize:13,fontWeight:700,color:'#1b2430',fontVariantNumeric:'tabular-nums',minWidth:48,textAlign:'right'}}>{d.v}</div>
-                </div>
-              ))}
-              {g.moreText&&<div style={{fontSize:11,color:'#9aa3b0',padding:'5px 9px 2px'}}>{g.moreText}</div>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Cause analysis */}
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:10,flexWrap:'wrap',margin:'0 0 11px'}}>
-        <div style={{fontSize:14,fontWeight:700}}>แยกที่มาของปัญหา — ฝั่งเราหรือฝั่งลูกค้า</div>
-        <div style={{fontSize:'clamp(9.5px,2.6vw,11.5px)',color:'#8b96a4'}}>เปรียบ "ทุกสาเหตุ → ตัดสาเหตุลูกค้า" · เดือนล่าสุด · หมวด {catName}</div>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:14,marginBottom:22}}>
-        <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'hidden'}}>
-          <div style={{padding:'14px 16px',borderBottom:'1px solid #eef1f4'}}>
-            <div style={{fontSize:13.5,fontWeight:700}}>ส่วนใหญ่มาจากฝั่งลูกค้า</div>
-            <div style={{fontSize:11,color:'#7a8593',marginTop:3}}>ตัดสาเหตุลูกค้าแล้ว SLA ดีขึ้น {'>'} 3% — ควรประสานและปรับเงื่อนไขจัดส่ง</div>
-          </div>
-          <div style={{padding:'5px 7px 8px'}}>
-            {fromCust.length===0&&<div style={{padding:'16px 8px',fontSize:12,color:'#9aa3b0',textAlign:'center'}}>ไม่มี DC ในกลุ่มนี้</div>}
-            {fromCust.map(d=>(
-              <div key={d.name} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 8px',borderRadius:8}}>
-                <div style={{fontSize:12,fontWeight:600,color:'#1b2430',marginRight:'auto',minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name}</div>
-                <div style={{fontSize:11,color:'#9aa3b0',whiteSpace:'nowrap'}}>{fmt(d.allV)} → {fmt(d.exclV)}</div>
-                <div style={{fontSize:12,fontWeight:700,color:'#2e8a4a',fontVariantNumeric:'tabular-nums',minWidth:36,textAlign:'right'}}>+{d.gap.toFixed(1)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div style={{background:'#fff',border:'1px solid #e4e8ed',borderRadius:14,overflow:'hidden'}}>
-          <div style={{padding:'14px 16px',borderBottom:'1px solid #eef1f4'}}>
-            <div style={{fontSize:13.5,fontWeight:700}}>ปัญหาส่วนใหญ่มาจากภายใน</div>
-            <div style={{fontSize:11,color:'#7a8593',marginTop:3}}>แม้ตัดสาเหตุลูกค้าแล้ว SLA ยังต่ำ — ต้องแก้ที่กระบวนการจัดส่ง</div>
-          </div>
-          <div style={{padding:'5px 7px 8px'}}>
-            {internal.length===0&&<div style={{padding:'16px 8px',fontSize:12,color:'#9aa3b0',textAlign:'center'}}>ไม่มี DC ในกลุ่มนี้</div>}
-            {internal.map(d=>(
-              <div key={d.name} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 8px',borderRadius:8}}>
-                <div style={{fontSize:12,fontWeight:600,color:'#1b2430',marginRight:'auto',minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name}</div>
-                <div style={{fontSize:11,color:'#9aa3b0',whiteSpace:'nowrap'}}>{fmt(d.allV)} → {fmt(d.exclV)}</div>
-                <div style={{fontSize:12,fontWeight:700,color:'#dd5043',fontVariantNumeric:'tabular-nums',minWidth:36,textAlign:'right'}}>{fmt(d.exclV)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── App ───────────────────────────────────────────────────────────────────────
-function App() {
-  const [tab, setTab] = useState('overview');
-  const [cat, setCat] = useState('total');
-  const [cause, setCause] = useState('all');
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [expanded, setExpanded] = useState({});
-  const [dcFocus, setDcFocus] = useState(null);
-
-  const [isWide, setIsWide] = useState(window.innerWidth>=700);
-  useEffect(()=>{
-    const fn=()=>setIsWide(window.innerWidth>=700);
-    window.addEventListener('resize',fn);
-    return ()=>window.removeEventListener('resize',fn);
-  },[]);
-
-  const load = useCallback(async()=>{
-    setLoading(true); setError(null);
-    try {
-      // Race: gviz JSONP (works for "Anyone with link") vs pub CSV (works after Publish to web)
-      // Whichever resolves first wins; both run in parallel
-      const fetchOne = (sheet) => promiseAny([
-        fetchSheetJsonP(sheet).then(t => {
-          const p = parseGVizTable(t);
-          if (!p) throw new Error('gviz-parse:' + sheet);
-          return p;
-        }),
-        fetchSheetPubCsv(sheet)
-      ]);
-      const [ab,cc,abcc] = await Promise.all([fetchOne('AB'),fetchOne('CC'),fetchOne('AB+CC')]);
-      if(!ab||!cc||!abcc) throw new Error('__PARSE__');
-      setData({ab,cc,abcc,months:abcc.months});
-    } catch(e) {
-      setError(e.message||'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    let detail = null;
+    const dd2 = en.find(x => x.name === s.openDc);
+    if (dd2) {
+      const raw = dcsRaw.find(x => x.name === s.openDc);
+      let dMax = -1, dMin = -1;
+      raw.all.forEach((v, i) => { if (v == null) return; if (dMax < 0 || v > raw.all[dMax]) dMax = i; if (dMin < 0 || v < raw.all[dMin]) dMin = i; });
+      detail = {
+        name: dd2.name, regionName: dd2.regionName, v: this.fmt(dd2.v), color: dd2.st.color, bg: dd2.st.bg, label: dd2.st.label,
+        avgAll: this.fmt(this.avg(raw.all)), avgExcl: this.fmt(this.avg(raw.excl)),
+        rows: months.map((mm, i) => ({ mo: SLA.monthsFull[i], all: this.fmt(raw.all[i]), excl: this.fmt(raw.excl[i]), w: (raw.all[i] == null ? 0 : raw.all[i]) + '%', c: raw.all[i] == null ? '#e2e6ec' : (i === dMin ? '#dd5043' : (i === dMax ? '#1d5fb0' : '#8fbaea')), rowBg: i === mo ? '#f1f7f6' : 'transparent' })),
+      };
     }
-    setLoading(false);
-  },[]);
 
-  useEffect(()=>{load();},[load]);
+    // ---------- ANALYSIS ----------
+    const slopeOf = (ser) => {
+      const ps = []; ser.forEach((v, i) => { if (v != null) ps.push([i, v]); });
+      const n = ps.length; if (n < 2) return 0;
+      const sx = ps.reduce((a, p) => a + p[0], 0), sy = ps.reduce((a, p) => a + p[1], 0);
+      const sxx = ps.reduce((a, p) => a + p[0] * p[0], 0), sxy = ps.reduce((a, p) => a + p[0] * p[1], 0);
+      const den = n * sxx - sx * sx; return den === 0 ? 0 : (n * sxy - sx * sy) / den;
+    };
+    const anBase = dcsRaw.map(d => {
+      const ser = d[M], v = ser[mo], vals = ser.filter(x => x != null);
+      return { name: d.name, regionName: regName(d.region), v, sl: slopeOf(ser.slice(-3)),
+        range: vals.length ? Math.max.apply(null, vals) - Math.min.apply(null, vals) : 0,
+        mn: vals.length ? Math.min.apply(null, vals) : null, mx: vals.length ? Math.max.apply(null, vals) : null };
+    }).filter(d => d.v != null);
+    const slMeta = (sl) => sl > 0.5 ? { a: '▲', c: '#1f9d57' } : sl < -0.5 ? { a: '▼', c: '#dd5043' } : { a: '▬', c: '#9aa3b0' };
+    const anItem = (d) => { const m = slMeta(d.sl); return { name: d.name, regionName: d.regionName, v: this.fmt(d.v), slArrow: m.a, sl: (d.sl >= 0 ? '+' : '') + d.sl.toFixed(1), slColor: m.c, onClick: openDetail(d.name) }; };
 
-  function handleSetTab(t) {
-    setTab(t);
-    if(t!=='dc') setDcFocus(null);
+    const LV = 80, MM = 0.5, gCrit = [], gRec = [], gWatch = [], gStrong = [];
+    anBase.forEach(d => {
+      const low = d.v < LV, up = d.sl > MM, down = d.sl < -MM;
+      if (low && !up) gCrit.push(d);
+      else if (low && up) gRec.push(d);
+      else if (!low && down) gWatch.push(d);
+      else gStrong.push(d);
+    });
+    const CAP = 8;
+    const mkGroup = (title, desc, headBg, accent, arr, sorter) => {
+      const sorted = [...arr].sort(sorter);
+      return { title, desc, headBg, accent, count: String(arr.length), list: sorted.slice(0, CAP).map(anItem), moreText: arr.length > CAP ? '+' + (arr.length - CAP) + ' DC เพิ่มเติม' : '' };
+    };
+    const groupCards = [
+      mkGroup('🔴 วิกฤต — เร่งด่วน', 'ต่ำกว่า 80% และยังไม่ฟื้น', '#fbe9e6', '#dd5043', gCrit, (a, b) => a.v - b.v),
+      mkGroup('🟡 เฝ้าระวัง', 'สูงแต่กำลังถดถอย', '#fbf4dd', '#c9920f', gWatch, (a, b) => a.sl - b.sl),
+      mkGroup('🟠 กำลังฟื้น', 'ต่ำแต่แนวโน้มดีขึ้น', '#fdeedd', '#dd7a2a', gRec, (a, b) => b.sl - a.sl),
+      mkGroup('🟢 แข็งแรง', 'สูงและทรงตัว/ดีขึ้น', '#e6f4ec', '#1f9d57', gStrong, (a, b) => b.v - a.v),
+    ];
+
+    const causeAll = dcsRaw.map(d => {
+      const av = d.all[mo], ev = d.excl[mo];
+      if (av == null || ev == null) return null;
+      return { name: d.name, regionName: regName(d.region), all: av, excl: ev, gap: ev - av };
+    }).filter(Boolean);
+    const causeItem = (d) => ({ name: d.name, regionName: d.regionName, all: this.fmt(d.all), excl: this.fmt(d.excl), gap: '+' + d.gap.toFixed(1), onClick: openDetail(d.name) });
+    const fromCust = causeAll.filter(d => d.gap >= 3).sort((a, b) => b.gap - a.gap).slice(0, 8).map(causeItem);
+    const fromUs = causeAll.filter(d => d.excl < 80).sort((a, b) => a.excl - b.excl).slice(0, 8).map(causeItem);
+
+    const vol = [...anBase].filter(d => d.range > 0).sort((a, b) => b.range - a.range).slice(0, 6)
+      .map(d => ({ name: d.name, regionName: d.regionName, range: d.range.toFixed(1), mn: this.fmt(d.mn), mx: this.fmt(d.mx), onClick: openDetail(d.name) }));
+    const quick = anBase.filter(d => d.v >= 80 && d.v < 90).sort((a, b) => b.v - a.v).slice(0, 6)
+      .map(d => ({ name: d.name, regionName: d.regionName, v: this.fmt(d.v), need: (90 - d.v).toFixed(1), onClick: openDetail(d.name) }));
+
+    const bandColors = ['#2f74c9', '#b6bfca', '#e0a23a', '#dd5043'];
+    const bands = months.map((mm, i) => {
+      let c1 = 0, c2 = 0, c3 = 0, c4 = 0;
+      dcsRaw.forEach(d => { const v = d[M][i]; if (v == null) return; if (v >= 90) c1++; else if (v >= 80) c2++; else if (v >= 70) c3++; else c4++; });
+      const tot = (c1 + c2 + c3 + c4) || 1, cnts = [c1, c2, c3, c4];
+      return { label: mm, current: i === mo, lblColor: i === mo ? '#0e5a61' : '#8b96a4', lblWeight: i === mo ? '700' : '600',
+        segs: cnts.map((c, k) => ({ h: (c / tot * 100).toFixed(2) + '%', c: bandColors[k], lab: c >= 3 ? String(c) : '' })) };
+    });
+    const bandCount = (i) => { let hi = 0, lo = 0; dcsRaw.forEach(d => { const v = d[M][i]; if (v == null) return; if (v >= 90) hi++; else if (v < 80) lo++; }); return { hi, lo }; };
+    const b0 = bandCount(0), bN = bandCount(mo);
+    const dCnt = (now, prev, goodUp) => { const dv = now - prev; const good = goodUp ? dv > 0 : dv < 0; return { s: (dv > 0 ? '+' : '') + dv, a: dv > 0 ? '▲' : dv < 0 ? '▼' : '▬', c: dv === 0 ? '#9aa3b0' : (good ? '#1f9d57' : '#dd5043') }; };
+    const hiD = dCnt(bN.hi, b0.hi, true), loD = dCnt(bN.lo, b0.lo, false);
+    const gNow = grandRaw[M][mo], gStart = grandRaw[M][0];
+    const avD = this.delta((gNow != null && gStart != null) ? gNow - gStart : null);
+    const bandHead = {
+      hi: String(bN.hi), hiD: hiD.s, hiDColor: hiD.c, hiDArrow: hiD.a,
+      lo: String(bN.lo), loD: loD.s, loDColor: loD.c, loDArrow: loD.a,
+      avg: this.fmt(gNow), avgD: avD.s, avgDColor: avD.c, avgDArrow: avD.a,
+      total: String(anBase.length),
+    };
+    // ---------- DISTRIBUTION HEATMAP ----------
+    const counts = [[], [], [], []];
+    months.forEach((mm, i) => {
+      const c = [0, 0, 0, 0];
+      dcsRaw.forEach(d => { const v = d[M][i]; if (v == null) return; if (v >= 90) c[0]++; else if (v >= 80) c[1]++; else if (v >= 70) c[2]++; else c[3]++; });
+      c.forEach((x, k) => counts[k].push(x));
+    });
+    const heatColors = [{ r: 47, g: 116, b: 201 }, { r: 120, g: 132, b: 146 }, { r: 217, g: 138, b: 30 }, { r: 214, g: 69, b: 58 }];
+    const heatNames = ['≥90', '80–89', '70–79', '<70'];
+    const heatRows = counts.map((arr, k) => {
+      const rmax = Math.max.apply(null, arr) || 1, col = heatColors[k];
+      return {
+        name: heatNames[k], dot: 'rgb(' + col.r + ',' + col.g + ',' + col.b + ')',
+        cells: arr.map((v, i) => {
+          const a = v === 0 ? 0.05 : (0.16 + 0.84 * (v / rmax));
+          return { v: String(v), bg: 'rgba(' + col.r + ',' + col.g + ',' + col.b + ',' + a.toFixed(3) + ')', color: a > 0.55 ? '#ffffff' : '#1b2430', ring: i === mo ? 'inset 0 0 0 2px rgba(14,90,97,0.55)' : 'none' };
+        }),
+      };
+    });
+    const heatMonths = months.map((mm, i) => ({ label: mm, color: i === mo ? '#0e5a61' : '#5f6b7a', weight: i === mo ? '700' : '600' }));
+    const heat = { months: heatMonths, rows: heatRows };
+    const heatM = { months: heatMonths.slice(-3), rows: heatRows.map(r => ({ name: r.name, dot: r.dot, cells: r.cells.slice(-3) })) };
+
+    const an = { bandHead, bands, groupCards, fromCust, fromUs, vol, quick, heat, heatM };
+
+    return {
+      ...head, catEmpty: false, catName,
+      showOverview: s.tab === 'overview', showRegion: s.tab === 'region', showDc: s.tab === 'dc', showAnalysis: s.tab === 'analysis', an,
+      kpi, trendCols, regionRows, regionsEx, worst, regionScores, regionTrend,
+      ovCards, ovLow, tcTotal, tcGen, tcCold, ovRegions, ovGrand, worstOv, topOv,
+      regionMobile: isNarrow, regionDesktop: !isNarrow,
+      regionChips, q: s.q, onSearch: (ev) => this.setState({ q: ev.target.value }),      sortName, sortAvg, sortChange, dcRows, monthHeads, monthHeadsM, causeLabel, dcCount: dcRows.length, monthLabel,
+      rgMonthHeads, rgMonthHeadsM, rgSortName, rgSortAvg, rgSortDelta,
+      detail, closeDc: () => this.setState({ openDc: null }), stop: (ev) => ev.stopPropagation(),
+    };
   }
-
-
-
-  return (
-    <div style={{minHeight:'100vh',background:'#eef1f4'}}>
-      <Header tab={tab} setTab={handleSetTab} cat={cat} setCat={setCat}
-        cause={cause} setCause={setCause} isWide={isWide} months={data?.months}/>
-      <main style={{maxWidth:1200,margin:'0 auto',padding:'clamp(14px,4vw,20px) clamp(13px,4vw,20px) 56px'}}>
-        {loading&&(
-          <div style={{padding:'80px 0',textAlign:'center',color:'#8b96a4',fontSize:14}}>
-            <div style={{width:36,height:36,borderRadius:'50%',border:'3px solid #e1e6ec',borderTopColor:'#1d5fb0',animation:'spin 0.8s linear infinite',margin:'0 auto 16px'}}/>
-            กำลังโหลดข้อมูล SLA จาก Google Sheets…
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-          </div>
-        )}
-        {!loading&&error&&(
-          <div style={{background:'#fff',border:'1px solid #f6d9d2',borderRadius:16,padding:'40px 28px',textAlign:'center',maxWidth:620,margin:'40px auto'}}>
-            <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
-            <div style={{fontSize:16,fontWeight:700,marginBottom:12,color:'#dd5043'}}>ไม่สามารถโหลดข้อมูลได้</div>
-            {(error.includes('__TIMEOUT__')||error.includes('__ACCESS__')||error.includes('__SCRIPT__')||error.includes('not-published')) ? (
-              <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.8,marginBottom:20,textAlign:'left',background:'#f9fafb',borderRadius:10,padding:'16px 20px'}}>
-                <div style={{fontWeight:700,color:'#1b2430',marginBottom:10}}>ไม่สามารถเข้าถึง Google Sheets ได้ — ต้องทำ 1 ใน 2 วิธีนี้</div>
-                <div style={{marginBottom:6,fontWeight:600,color:'#3a4654'}}>วิธีที่ 1 (แนะนำ): เผยแพร่ไปยังเว็บ</div>
-                <ol style={{margin:'0 0 12px 18px',padding:0,lineHeight:2}}>
-                  <li>เปิด Google Sheets → <strong>ไฟล์</strong> → <strong>แชร์</strong> → <strong>เผยแพร่ไปยังเว็บ</strong></li>
-                  <li>เลือก <strong>ชีต: AB</strong>, ฟอร์แมต <strong>เว็บเพจ</strong> → คลิก <strong>เผยแพร่</strong></li>
-                  <li>ทำซ้ำสำหรับชีต <strong>CC</strong> และ <strong>AB+CC</strong></li>
-                  <li>กลับมากด <strong>ลองใหม่</strong></li>
-                </ol>
-                <div style={{marginBottom:6,fontWeight:600,color:'#3a4654'}}>วิธีที่ 2: ตั้งค่าแชร์ให้สาธารณะ</div>
-                <ol style={{margin:'0 0 8px 18px',padding:0,lineHeight:2}}>
-                  <li>คลิก <strong>แชร์</strong> (มุมขวาบน) → เปลี่ยนเป็น <strong>"ทุกคนบนอินเทอร์เน็ต"</strong> (ไม่ใช่แค่ในองค์กร)</li>
-                  <li>กลับมากด <strong>ลองใหม่</strong></li>
-                </ol>
-                <div style={{marginTop:8,fontSize:11,color:'#aab4be'}}>รหัสข้อผิดพลาด: {error.slice(0,60)}</div>
-              </div>
-            ) : error.startsWith('__PARSE__') ? (
-              <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>
-                อ่านโครงสร้างข้อมูลไม่ได้ — ตรวจสอบว่าชื่อชีตคือ <strong>AB</strong>, <strong>CC</strong>, <strong>AB+CC</strong>
-              </div>
-            ) : (
-              <div style={{fontSize:13.5,color:'#7a8593',lineHeight:1.65,marginBottom:20}}>{error}</div>
-            )}
-            <button onClick={load} style={{padding:'10px 24px',background:'#1d5fb0',color:'#fff',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:14,fontWeight:600,cursor:'pointer',marginTop:4}}>
-              ลองใหม่
-            </button>
-          </div>
-        )}
-        {!loading&&!error&&data&&(
-          <>
-            {tab==='overview'&&<OverviewTab data={data} isWide={isWide} setTab={handleSetTab} setCat={setCat} setDcFocus={d=>{setDcFocus(d);setTab('dc');}}/>}
-            {tab==='region'&&<RegionTab data={data} cat={cat} cause={cause} isWide={isWide} expanded={expanded} setExpanded={setExpanded}/>}
-            {tab==='dc'&&<DCTab data={data} cat={cat} cause={cause} isWide={isWide} dcFocus={dcFocus}/>}
-            {tab==='analysis'&&<AnalysisTab data={data} cat={cat} cause={cause} isWide={isWide}/>}
-          </>
-        )}
-      </main>
-    </div>
-  );
 }
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
