@@ -7,76 +7,195 @@
 </head>
 <body>
 <x-dc>
-<div ref="{{ rootRef }}" style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:18px 20px 12px; font-family:'IBM Plex Sans Thai',system-ui,sans-serif;">
-  <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:5px; flex-wrap:wrap;">
-    <div style="font-size:14px; font-weight:700; color:#1b2430;">{{ title }}</div>
-    <div style="display:flex; align-items:center; gap:10px; font-size:9.5px; color:#8b96a4;">
-      <span style="display:flex; align-items:center; gap:4px;"><span style="width:12px; height:8px; border-radius:2px; background:#cfddf1; display:inline-block;"></span>ทุกสาเหตุ</span>
-      <span style="display:flex; align-items:center; gap:4px;"><span style="width:14px; height:0; border-top:2.5px solid #1b2430; display:inline-block;"></span>ตัดสาเหตุลูกค้า</span>
+<div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:16px 18px 13px; height:100%; box-sizing:border-box; display:flex; flex-direction:column;">
+
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+    <div style="min-width:0;">
+      <div style="font-size:13.5px; font-weight:700; line-height:1.2;">{{ title }}</div>
+      <sc-if value="{{ hasSub }}"><div style="font-size:11px; color:#8b96a4; margin-top:2px;">{{ subtitle }}</div></sc-if>
+    </div>
+    <div style="display:flex; gap:13px; margin-left:auto; font-size:11px;">
+      <span style="display:flex; align-items:center; gap:6px; color:#5f6b7a;"><span style="width:15px; height:3px; border-radius:2px; background:#1d5fb0;"></span>ทุกสาเหตุ</span>
+      <span style="display:flex; align-items:center; gap:6px; color:#5f6b7a;"><span style="width:15px; height:3px; border-radius:2px; background:#14a098;"></span>ตัดลูกค้า</span>
     </div>
   </div>
-  <sc-if value="{{ hasSub }}">
-  <div style="font-size:11.5px; color:#9aa3b0; margin-bottom:4px;">{{ subtitle }}</div>
-  </sc-if>
-  {{ svgChart }}
+
+  <div style="display:flex; gap:8px; flex:1; min-height:160px;">
+    <div style="position:relative; width:26px; height:160px; flex-shrink:0; align-self:center;">
+      <sc-for list="{{ gridLines }}" as="g" hint-placeholder-count="4">
+        <div style="position:absolute; top:{{ g.top }}px; right:0; transform:translateY(-50%); font-size:9.5px; color:#aeb6c0; font-variant-numeric:tabular-nums;">{{ g.label }}</div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+      <div style="position:relative; width:100%; height:160px;">
+        <sc-for list="{{ gridLines }}" as="g" hint-placeholder-count="4">
+          <div style="position:absolute; left:0; right:0; top:{{ g.top }}px; height:1px; background:#eef1f4;"></div>
+        </sc-for>
+
+        <svg viewBox="0 0 100 160" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%; overflow:visible;">
+          <defs>
+            <linearGradient id="{{ gid }}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1d5fb0" stop-opacity="0.20"></stop>
+              <stop offset="100%" stop-color="#1d5fb0" stop-opacity="0"></stop>
+            </linearGradient>
+          </defs>
+          <path d="{{ areaAll }}" fill="url(#{{ gid }})" stroke="none"></path>
+          <path d="{{ lineExcl }}" fill="none" stroke="#14a098" stroke-width="2" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"></path>
+          <path d="{{ lineAll }}" fill="none" stroke="#1d5fb0" stroke-width="2.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"></path>
+        </svg>
+
+        <sc-for list="{{ dotsExcl }}" as="d" hint-placeholder-count="6">
+          <div style="position:absolute; left:{{ d.left }}%; top:{{ d.top }}px; width:{{ d.sz }}px; height:{{ d.sz }}px; border-radius:50%; background:#fff; border:1.6px solid #14a098; transform:translate(-50%,-50%); box-shadow:{{ d.sh }};"></div>
+        </sc-for>
+        <sc-for list="{{ dotsAll }}" as="d" hint-placeholder-count="6">
+          <div style="position:absolute; left:{{ d.left }}%; top:{{ d.top }}px; width:{{ d.sz }}px; height:{{ d.sz }}px; border-radius:50%; background:#1d5fb0; border:2px solid #fff; transform:translate(-50%,-50%); box-shadow:{{ d.sh }};"></div>
+        </sc-for>
+
+        <sc-for list="{{ valLabelsExcl }}" as="t" hint-placeholder-count="6">
+          <div style="position:absolute; left:{{ t.left }}%; top:{{ t.top }}px; transform:translate(-50%,-50%); font-size:{{ t.fs }}px; font-weight:{{ t.fw }}; color:{{ t.color }}; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap;">{{ t.v }}</div>
+        </sc-for>
+        <sc-for list="{{ valLabels }}" as="t" hint-placeholder-count="6">
+          <div style="position:absolute; left:{{ t.left }}%; top:{{ t.top }}px; transform:translate(-50%,-50%); font-size:{{ t.fs }}px; font-weight:{{ t.fw }}; color:{{ t.color }}; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap;">{{ t.v }}</div>
+        </sc-for>
+
+        <sc-if value="{{ tip }}">
+          <div style="position:absolute; left:{{ tip.left }}%; top:0; bottom:0; width:1px; background:rgba(14,90,97,0.28); transform:translateX(-50%); pointer-events:none; z-index:2;"></div>
+          <sc-if value="{{ tip.hasExcl }}"><div style="position:absolute; left:{{ tip.left }}%; top:{{ tip.exclTop }}px; width:11px; height:11px; border-radius:50%; background:#fff; border:2px solid #14a098; transform:translate(-50%,-50%); pointer-events:none; z-index:3;"></div></sc-if>
+          <sc-if value="{{ tip.hasAll }}"><div style="position:absolute; left:{{ tip.left }}%; top:{{ tip.allTop }}px; width:12px; height:12px; border-radius:50%; background:#1d5fb0; border:2px solid #fff; box-shadow:0 0 0 3px rgba(29,95,176,0.18); transform:translate(-50%,-50%); pointer-events:none; z-index:3;"></div></sc-if>
+          <div style="position:absolute; left:{{ tip.left }}%; top:{{ tip.boxTop }}px; transform:{{ tip.transform }}; background:#1b2430; color:#fff; padding:6px 9px; border-radius:8px; font-size:11px; line-height:1.5; white-space:nowrap; pointer-events:none; z-index:6; box-shadow:0 6px 16px rgba(15,30,40,.26);">
+            <div style="font-weight:700; margin-bottom:2px;">{{ tip.label }}</div>
+            <div style="display:flex; align-items:center; gap:6px;"><span style="width:11px; height:3px; border-radius:2px; background:#5b9bf0; flex-shrink:0;"></span>ทุกสาเหตุ <b style="margin-left:auto; padding-left:8px; font-variant-numeric:tabular-nums;">{{ tip.all }}</b></div>
+            <div style="display:flex; align-items:center; gap:6px;"><span style="width:11px; height:3px; border-radius:2px; background:#3fd1c7; flex-shrink:0;"></span>ตัดลูกค้า <b style="margin-left:auto; padding-left:8px; font-variant-numeric:tabular-nums;">{{ tip.excl }}</b></div>
+          </div>
+        </sc-if>
+
+        <sc-for list="{{ hoverBands }}" as="b" hint-placeholder-count="6">
+          <div onmouseenter="{{ b.onEnter }}" onmouseleave="{{ b.onLeave }}" onclick="{{ b.onClick }}" style="position:absolute; top:0; bottom:0; left:{{ b.left }}%; width:{{ b.w }}%; cursor:pointer; z-index:4;"></div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; margin-top:7px;">
+        <sc-for list="{{ xTicks }}" as="t" hint-placeholder-count="6">
+          <div style="flex:1; text-align:center; font-size:10.5px; font-weight:{{ t.weight }}; color:{{ t.color }};">{{ t.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:720,&quot;height&quot;:300},&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;แนวโน้ม SLA ภาพรวม&quot;},&quot;subtitle&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;ค่า SLA รายเดือน (%) · ม.ค.–มิ.ย.&quot;},&quot;all&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[79.6,78.3,78.1,77.7,74.4,73.9]},&quot;excl&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[81.5,80.1,80.8,80.4,76.2,76.4]},&quot;labels&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[&quot;ม.ค.&quot;,&quot;ก.พ.&quot;,&quot;มี.ค.&quot;,&quot;เม.ย.&quot;,&quot;พ.ค.&quot;,&quot;มิ.ย.&quot;]},&quot;latest&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:5}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:560,&quot;height&quot;:250},&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;แนวโน้ม SLA&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;subtitle&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;all&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(number|null)[]&quot;},&quot;excl&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(number|null)[]&quot;},&quot;labels&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;tipLabels&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;showValues&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;valueIndices&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;number[]&quot;},&quot;hover&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;latest&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:5,&quot;tsType&quot;:&quot;number&quot;}}">
 class Component extends DCLogic {
-  state = { w: 0 };
-  _ref = React.createRef();
-  fmt(v) { return v == null ? '—' : v.toFixed(1); }
-  measure() { const el = this._ref.current; if (!el) return; const w = el.clientWidth - 40; if (w > 0 && Math.abs(w - this.state.w) > 1) this.setState({ w }); }
-  componentDidMount() { this.measure(); if (typeof ResizeObserver !== 'undefined' && this._ref.current) { this._ro = new ResizeObserver(() => this.measure()); this._ro.observe(this._ref.current); } this._onR = () => this.measure(); window.addEventListener('resize', this._onR); }
-  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._onR) window.removeEventListener('resize', this._onR); }
+  state = { hover: null, pin: null };
   renderVals() {
     const p = this.props;
-    const all = p.all || [79.6, 78.3, 78.1, 77.7, 74.4, 73.9];
-    const excl = p.excl || [81.5, 80.1, 80.8, 80.4, 76.2, 76.4];
-    const labels = p.labels || ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.'];
-    const latest = p.latest == null ? all.length - 1 : p.latest;
+    const all = Array.isArray(p.all) ? p.all : [];
+    const excl = Array.isArray(p.excl) ? p.excl : [];
+    const labels = Array.isArray(p.labels) ? p.labels : [];
+    const tipLabels = Array.isArray(p.tipLabels) ? p.tipLabels : labels;
+    const n = labels.length || all.length || 1;
+    const latest = (p.latest == null) ? n - 1 : p.latest;
 
-    const W = 720, H = 232, padX = 20, padBot = 30;
-    const plotTop = 40, plotBot = H - padBot, plotH = plotBot - plotTop;
-    const lo = 50, hi = 92, span = hi - lo;
-    const n = all.length || 6;
-    const slot = (W - 2 * padX) / n;
-    const barW = Math.min(54, slot * 0.5);
-    const cx = (i) => padX + slot * i + slot / 2;
-    const yFor = (v) => { if (v == null) return null; const c = Math.max(lo, Math.min(hi, v)); return plotBot - ((c - lo) / span) * plotH; };
+    // domain across both series
+    const vals = all.concat(excl).filter(v => v != null);
+    let dMin = 0, dMax = 100;
+    if (vals.length) {
+      const mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+      dMin = Math.max(0, Math.floor((mn - 4) / 5) * 5);
+      dMax = Math.min(100, Math.ceil((mx + 4) / 5) * 5);
+      if (dMax - dMin < 10) dMax = Math.min(100, dMin + 10);
+    }
 
-    const h = React.createElement;
-    const vpMobile = (typeof window !== 'undefined' && window.innerWidth < 700);
-    const scale = this.state.w > 0 ? this.state.w / W : 0.8;
-    const fpx = (t, mn, mx) => Math.max(mn, Math.min(mx, t / scale));
-    const fBar = vpMobile ? 20 : fpx(15, 9, 30);
-    const fLine = vpMobile ? 17 : fpx(12.5, 8, 26);
-    const fMonth = vpMobile ? 19 : fpx(14, 9, 28);
-    const els = [];
-    let maxIdx = -1, minIdx = -1;
-    all.forEach((v, i) => { if (v == null) return; if (maxIdx < 0 || v > all[maxIdx]) maxIdx = i; if (minIdx < 0 || v < all[minIdx]) minIdx = i; });
-    all.forEach((v, i) => {
-      const y = yFor(v); if (y == null) return;
-      const center = cx(i);
-      const fill = i === minIdx ? '#dd5043' : (i === maxIdx ? '#1d5fb0' : '#cfddf1');
-      const tcolor = (i === minIdx || i === maxIdx) ? '#ffffff' : '#3a527a';
-      els.push(h('rect', { key: 'r' + i, x: center - barW / 2, y, width: barW, height: plotBot - y, rx: 5, fill }));
-      els.push(h('text', { key: 'bt' + i, x: center, y: (y + plotBot) / 2 + fBar * 0.33, textAnchor: 'middle', fontSize: fBar, fontWeight: 700, fill: tcolor, fontFamily: 'inherit' }, this.fmt(v)));
-    });
-    const linePts = excl.map((v, i) => { const y = yFor(v); return y == null ? null : (cx(i) + ',' + y); }).filter(Boolean).join(' ');
-    els.push(h('polyline', { key: 'poly', points: linePts, fill: 'none', stroke: '#1b2430', strokeWidth: 2.5, strokeLinejoin: 'round', strokeLinecap: 'round' }));
-    excl.forEach((v, i) => {
-      const y = yFor(v); if (y == null) return;
-      els.push(h('circle', { key: 'c' + i, cx: cx(i), cy: y, r: 4, fill: '#ffffff', stroke: '#1b2430', strokeWidth: 2.5 }));
-      els.push(h('text', { key: 'pt' + i, x: cx(i), y: y - (fLine * 0.8 + 2), textAnchor: 'middle', fontSize: fLine, fontWeight: 600, fill: '#1b2430', fontFamily: 'inherit' }, this.fmt(v)));
-    });
-    labels.forEach((l, i) => {
-      els.push(h('text', { key: 'x' + i, x: cx(i), y: H - 7, textAnchor: 'middle', fontSize: fMonth, fontWeight: (i === minIdx || i === maxIdx) ? 700 : 500, fill: i === minIdx ? '#dd5043' : (i === maxIdx ? '#1d5fb0' : '#8b96a4'), fontFamily: 'inherit' }, l));
+    const padTop = 12, padBot = 12, H = 160, plotH = H - padTop - padBot;
+    const X = (i) => ((i + 0.5) / n) * 100;            // band centre, percent
+    const Y = (v) => padTop + (1 - (v - dMin) / (dMax - dMin)) * plotH; // px
+
+    // เส้นโค้งนุ่ม (Catmull-Rom → Bézier)
+    const sp = (arr) => {
+      if (!arr.length) return '';
+      if (arr.length < 2) return 'M' + arr[0][0].toFixed(2) + ',' + arr[0][1].toFixed(2);
+      let d = 'M' + arr[0][0].toFixed(2) + ',' + arr[0][1].toFixed(2);
+      for (let i = 0; i < arr.length - 1; i++) {
+        const p0 = arr[i - 1] || arr[i], p1 = arr[i], p2 = arr[i + 1], p3 = arr[i + 2] || p2;
+        const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+        const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+        d += ' C' + c1x.toFixed(2) + ',' + c1y.toFixed(2) + ' ' + c2x.toFixed(2) + ',' + c2y.toFixed(2) + ' ' + p2[0].toFixed(2) + ',' + p2[1].toFixed(2);
+      }
+      return d;
+    };
+    const toPts = (arr) => arr.map((v, i) => v == null ? null : [X(i), Y(v)]).filter(Boolean);
+    const allPts = toPts(all), exclPts = toPts(excl);
+    const lineAll = sp(allPts), lineExcl = sp(exclPts);
+    let areaAll = '';
+    if (allPts.length) {
+      areaAll = sp(allPts) + ' L' + allPts[allPts.length - 1][0].toFixed(2) + ',' + (H - padBot) + ' L' + allPts[0][0].toFixed(2) + ',' + (H - padBot) + ' Z';
+    }
+
+    const dots = (arr, isAll) => arr.map((v, i) => {
+      if (v == null) return null;
+      const cur = i === latest;
+      return { left: X(i).toFixed(2), top: Y(v).toFixed(2), sz: cur ? 10 : 7,
+        sh: cur ? (isAll ? '0 0 0 3px rgba(29,95,176,0.16)' : '0 0 0 3px rgba(20,160,152,0.18)') : 'none' };
+    }).filter(Boolean);
+
+    const gridLines = [0, 1, 2, 3].map(k => {
+      const val = dMin + (dMax - dMin) * (3 - k) / 3;  // top = dMax
+      return { top: Y(val).toFixed(2), label: Math.round(val) };
     });
 
-    const svgChart = h('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', overflow: 'visible' } }, els);
-    const subtitle = p.subtitle || '';
-    return { title: p.title || 'แนวโน้ม SLA', subtitle, hasSub: !!subtitle.trim(), svgChart, rootRef: this._ref };
+    const xTicks = labels.map((l, i) => ({
+      label: l,
+      color: i === latest ? '#0e5a61' : '#9aa3b0',
+      weight: i === latest ? '700' : '500',
+    }));
+
+    const fmt = (v) => v == null ? '—' : v.toFixed(1) + '%';
+
+    // ── ป้ายตัวเลขถาวร (เฉพาะกราฟรายเดือน): ทุกสาเหตุใต้จุด · ตัดลูกค้าบนจุด ──
+    const idxSet = Array.isArray(p.valueIndices) ? new Set(p.valueIndices) : null;
+    const showValues = !!p.showValues || !!idxSet;
+    const labelAt = (i) => showValues && (idxSet ? idxSet.has(i) : true);
+    const valLabels = all.map((v, i) => (v == null || !labelAt(i)) ? null : ({ left: X(i).toFixed(2), top: (Y(v) + (i === latest ? 14 : 13)).toFixed(2), v: v.toFixed(1), fs: i === latest ? 11.5 : 9.5, fw: i === latest ? '700' : '600', color: i === latest ? '#1d5fb0' : '#5d82bf' })).filter(Boolean);
+    const valLabelsExcl = excl.map((v, i) => (v == null || !labelAt(i)) ? null : ({ left: X(i).toFixed(2), top: (Y(v) - (i === latest ? 14 : 13)).toFixed(2), v: v.toFixed(1), fs: i === latest ? 11.5 : 9.5, fw: i === latest ? '700' : '600', color: i === latest ? '#0f8e86' : '#3aa49b' })).filter(Boolean);
+
+    // ── tooltip แบบแตะ/ชี้ที่จุด ──
+    const hoverOn = p.hover !== false;
+    const setHover = (i) => () => { if (this.state.hover !== i) this.setState({ hover: i }); };
+    const clearHover = () => () => { if (this.state.hover != null) this.setState({ hover: null }); };
+    const togglePin = (i) => () => this.setState(st => ({ pin: st.pin === i ? null : i }));
+    const hoverBands = hoverOn ? labels.map((l, i) => ({
+      left: ((i / n) * 100).toFixed(3), w: (100 / n).toFixed(3),
+      onEnter: setHover(i), onLeave: clearHover(), onClick: togglePin(i),
+    })) : [];
+    const hi = this.state.pin != null ? this.state.pin : this.state.hover;
+    let tip = null;
+    if (hoverOn && hi != null && hi >= 0 && hi < n && (all[hi] != null || excl[hi] != null)) {
+      const av = all[hi], ev = excl[hi];
+      const tops = [];
+      if (av != null) tops.push(Y(av));
+      if (ev != null) tops.push(Y(ev));
+      const boxTop = Math.min.apply(null, tops);
+      const below = boxTop < 50;
+      tip = {
+        left: X(hi).toFixed(2), label: (tipLabels[hi] != null && tipLabels[hi] !== '') ? String(tipLabels[hi]) : (labels[hi] || ''),
+        all: fmt(av), excl: fmt(ev),
+        hasAll: av != null, hasExcl: ev != null,
+        allTop: av != null ? Y(av).toFixed(2) : '0', exclTop: ev != null ? Y(ev).toFixed(2) : '0',
+        boxTop: below ? Math.max.apply(null, tops).toFixed(2) : boxTop.toFixed(2),
+        transform: below ? 'translate(-50%,16px)' : 'translate(-50%,calc(-100% - 12px))',
+      };
+    }
+
+    const gid = this._gid || (this._gid = 'tg-' + Math.random().toString(36).slice(2, 8));
+
+    return {
+      title: p.title || '', subtitle: p.subtitle || '', hasSub: !!(p.subtitle && String(p.subtitle).trim()),
+      gid,
+      lineAll, lineExcl, areaAll, gridLines, xTicks,
+      dotsAll: dots(all, true), dotsExcl: dots(excl, false),
+      allLatest: fmt(all[latest]), exclLatest: fmt(excl[latest]),
+      hoverBands, tip, valLabels, valLabelsExcl,
+    };
   }
 }
 </script>

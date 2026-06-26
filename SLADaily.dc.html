@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:14px;">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+      <div style="font-size:14px; font-weight:700;">ความเคลื่อนไหว SLA รายวัน · {{ monthName }}</div>
+      <sc-if value="{{ sample }}"><span style="font-size:10.5px; font-weight:600; color:#9a6a08; background:#fbf1d9; border:1px solid #f0e0b6; padding:2px 9px; border-radius:20px;">ข้อมูลตัวอย่าง</span></sc-if>
+    </div>
+    <div style="display:flex; gap:13px; font-size:11px; color:#8b96a4; align-items:center; flex-wrap:wrap;">
+      <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#e7f0fb;"></span>≥90</span>
+      <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#f1f4f7;"></span>80–89</span>
+      <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#fbeae6;"></span>70–79</span>
+      <span style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:#f6d9d2;"></span>&lt;70</span>
+    </div>
+  </div>
+
+  <dc-import name="SLATrend" title="SLA รวมรายวัน — ทุก DC" subtitle="{{ trendSub }}" all="{{ grandAll }}" excl="{{ grandExcl }}" labels="{{ dayLabels }}" tip-labels="{{ tipLabels }}" value-indices="{{ valueIndices }}" latest="{{ latestIdx }}" hint-size="100%,250px"></dc-import>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <input value="{{ q }}" oninput="{{ onSearch }}" placeholder="ค้นหาชื่อ DC…" style="flex:1; min-width:180px; padding:10px 14px; border:1px solid #dce1e7; border-radius:10px; font-family:inherit; font-size:13.5px; background:#fff; color:#1b2430; outline:none;">
+    <div style="font-size:clamp(10px,2.6vw,12px); color:#8b96a4;">{{ dcCount }} DC · ค่า SLA รายวัน (%) · {{ causeLabel }} · กดหัวคอลัมน์เพื่อเรียง · เลื่อนแนวนอนดูครบเดือน</div>
+  </div>
+
+  <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:auto; max-height:74vh;">
+    <div style="min-width:{{ minW }}px;">
+
+      <div style="display:grid; grid-template-columns:{{ gtc }}; align-items:center; padding:9px 0; border-bottom:1px solid #eef1f4; position:sticky; top:0; z-index:3; background:#fff;">
+        <div onclick="{{ sortName.onClick }}" style="font-size:11px; color:{{ sortName.color }}; font-weight:700; cursor:pointer; position:sticky; left:0; z-index:4; background:#fff; padding:0 10px 0 14px; display:flex; align-items:center; gap:4px; box-shadow:6px 0 6px -4px rgba(0,0,0,0.06); user-select:none;">DC<span style="color:#0e5a61; font-size:9px;">{{ sortName.arrow }}</span></div>
+        <sc-for list="{{ dayHeads }}" as="m" hint-placeholder-count="25">
+          <div onclick="{{ m.onClick }}" style="text-align:center; font-size:10px; font-weight:{{ m.weight }}; color:{{ m.color }}; background:{{ m.bg }}; cursor:pointer; padding:3px 0; border-radius:5px; user-select:none;">{{ m.label }}</div>
+        </sc-for>
+        <div onclick="{{ sortAvg.onClick }}" style="text-align:center; font-size:11px; color:{{ sortAvg.color }}; font-weight:700; cursor:pointer; user-select:none;">เฉลี่ย<span style="color:#0e5a61; font-size:9px;"> {{ sortAvg.arrow }}</span></div>
+        <div onclick="{{ sortDelta.onClick }}" style="text-align:right; font-size:11px; color:{{ sortDelta.color }}; font-weight:700; cursor:pointer; padding-right:12px; user-select:none;">7วัน<span style="color:#0e5a61; font-size:9px;"> {{ sortDelta.arrow }}</span></div>
+      </div>
+
+      <sc-for list="{{ rows }}" as="d" hint-placeholder-count="16">
+        <div onclick="{{ d.onClick }}" style="display:grid; grid-template-columns:{{ gtc }}; align-items:center; padding:3px 0; border-bottom:1px solid #f5f6f8; cursor:pointer;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0; position:sticky; left:0; z-index:1; background:#fff; padding:5px 10px 5px 14px; box-shadow:6px 0 6px -4px rgba(0,0,0,0.06);">
+            <span style="font-size:10px; font-weight:700; color:#b6bfca; min-width:15px; text-align:center; font-variant-numeric:tabular-nums; flex-shrink:0;">{{ d.rank }}</span>
+            <span style="font-size:12.5px; font-weight:600; color:#1b2430; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</span>
+          </div>
+          <sc-for list="{{ d.cells }}" as="c" hint-placeholder-count="25">
+            <div style="margin:1.5px; padding:5px 0; border-radius:5px; background:{{ c.bg }}; text-align:center; box-shadow:{{ c.ring }};">
+              <span style="font-size:11px; font-weight:{{ c.weight }}; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</span>
+            </div>
+          </sc-for>
+          <div style="text-align:center; font-size:12.5px; font-weight:700; color:{{ d.avgColor }}; font-variant-numeric:tabular-nums;">{{ d.avg }}</div>
+          <div style="text-align:right; font-size:11px; font-weight:600; color:{{ d.dColor }}; font-variant-numeric:tabular-nums; padding-right:12px; white-space:nowrap;">{{ d.dArrow }} {{ d.delta }}</div>
+        </div>
+      </sc-for>
+
+      <div style="display:grid; grid-template-columns:{{ gtc }}; align-items:center; padding:6px 0; background:#f6f8f9;">
+        <div style="font-size:12.5px; font-weight:700; position:sticky; left:0; z-index:1; background:#f6f8f9; padding:0 10px 0 37px; box-shadow:6px 0 6px -4px rgba(0,0,0,0.04);">รวมทุก DC</div>
+        <sc-for list="{{ grandRow.cells }}" as="c" hint-placeholder-count="25">
+          <div style="margin:1.5px; padding:5px 0; border-radius:5px; background:{{ c.bg }}; text-align:center; box-shadow:{{ c.ring }};">
+            <span style="font-size:11px; font-weight:{{ c.weight }}; color:{{ c.color }}; font-variant-numeric:tabular-nums;">{{ c.v }}</span>
+          </div>
+        </sc-for>
+        <div style="text-align:center; font-size:12.5px; font-weight:700; color:{{ grandRow.avgColor }}; font-variant-numeric:tabular-nums;">{{ grandRow.avg }}</div>
+        <div style="text-align:right; font-size:11px; font-weight:600; color:{{ grandRow.dColor }}; font-variant-numeric:tabular-nums; padding-right:12px; white-space:nowrap;">{{ grandRow.dArrow }} {{ grandRow.delta }}</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1120,&quot;height&quot;:620},&quot;days&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{d:number,weekend:boolean}[]&quot;},&quot;rows&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any[]&quot;},&quot;grand&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;metric&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;all&quot;,&quot;excl&quot;],&quot;default&quot;:&quot;all&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;monthName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;มิถุนายน&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;sample&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onPick&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(name:string)=&gt;void&quot;}}">
+class Component extends DCLogic {
+  state = { q: '', sortCol: 'avg', sortDir: 'desc' };
+
+  cellStyle(v, cur) {
+    let bg, color;
+    if (v == null) { bg = '#f4f6f8'; color = '#c2cad3'; }
+    else if (v >= 90) { bg = '#e7f0fb'; color = '#1d5fb0'; }
+    else if (v >= 80) { bg = '#f1f4f7'; color = '#1b2430'; }
+    else if (v >= 70) { bg = '#fbeae6'; color = '#c5392b'; }
+    else { bg = '#f6d9d2'; color = '#a82e22'; }
+    return { v: v == null ? '—' : String(Math.round(v)), bg, color, weight: cur ? '700' : '600', ring: cur ? 'inset 0 0 0 1.6px rgba(14,90,97,0.5)' : 'none' };
+  }
+  avgColor(v) { return v == null ? '#9aa3b0' : (v >= 90 ? '#1d5fb0' : (v < 80 ? '#dd5043' : '#1b2430')); }
+  wAvg(series, vol) { let so = 0, sv = 0; for (let i = 0; i < series.length; i++) { if (series[i] == null || !vol[i]) continue; sv += vol[i]; so += vol[i] * series[i]; } return sv ? so / sv : null; }
+  delta7(series) {
+    let last = -1; for (let i = series.length - 1; i >= 0; i--) { if (series[i] != null) { last = i; break; } }
+    if (last < 0) return null;
+    let prev = last - 7; if (prev < 0 || series[prev] == null) { for (let i = 0; i < last; i++) { if (series[i] != null) { prev = i; break; } } }
+    if (prev < 0 || series[prev] == null) return null;
+    return series[last] - series[prev];
+  }
+  fmtD(v) { if (v == null) return { s: '—', c: '#8b96a4', a: '' }; const sg = v > 0 ? '+' : ''; return { s: sg + v.toFixed(1), c: v > 0 ? '#1f9d57' : v < 0 ? '#dd5043' : '#8b96a4', a: v > 0 ? '▲' : v < 0 ? '▼' : '•' }; }
+
+  renderVals() {
+    const p = this.props, s = this.state;
+    const days = Array.isArray(p.days) ? p.days : [];
+    const allRows = Array.isArray(p.rows) ? p.rows : [];
+    const grand = p.grand || { all: [], excl: [], vol: [] };
+    const metric = p.metric === 'excl' ? 'excl' : 'all';
+    const isAll = metric === 'all';
+    const n = days.length;
+    const latestIdx = n - 1;
+    const seriesOf = (r) => (metric === 'excl' ? r.excl : r.all) || [];
+
+    // enrich
+    const enriched = allRows.map(r => {
+      const series = seriesOf(r), vol = r.vol || [];
+      const avg = this.wAvg(series, vol), d7 = this.delta7(series);
+      return { name: r.name, series, vol, avg, d7 };
+    });
+
+    let list = enriched;
+    if (s.q.trim()) { const q = s.q.trim(); list = list.filter(d => d.name.indexOf(q) !== -1); }
+
+    const col = s.sortCol, dir = s.sortDir === 'asc' ? 1 : -1;
+    const sval = (d) => col === 'name' ? null : col === 'avg' ? d.avg : col === 'delta' ? d.d7 : d.series[parseInt(col.slice(1), 10)];
+    const sorted = [...list].sort((x, y) => {
+      if (col === 'name') return dir * x.name.localeCompare(y.name, 'th');
+      const xv = sval(x), yv = sval(y);
+      if (xv == null && yv == null) return 0; if (xv == null) return 1; if (yv == null) return -1;
+      return dir * (xv - yv);
+    });
+
+    const rows = sorted.map((d, i) => ({
+      rank: i + 1,
+      name: d.name,
+      cells: d.series.map((v, i) => this.cellStyle(v, i === latestIdx)),
+      avg: d.avg == null ? '—' : d.avg.toFixed(1), avgColor: this.avgColor(d.avg),
+      ...(() => { const dd = this.fmtD(d.d7); return { delta: dd.s, dColor: dd.c, dArrow: dd.a }; })(),
+      onClick: () => { if (typeof p.onPick === 'function') p.onPick(d.name); },
+    }));
+
+    const gSeries = (metric === 'excl' ? grand.excl : grand.all) || [];
+    const gAvg = this.wAvg(gSeries, grand.vol || []);
+    const gd = this.fmtD(this.delta7(gSeries));
+    const grandRow = { cells: gSeries.map((v, i) => this.cellStyle(v, i === latestIdx)), avg: gAvg == null ? '—' : gAvg.toFixed(1), avgColor: this.avgColor(gAvg), delta: gd.s, dColor: gd.c, dArrow: gd.a };
+
+    // headers
+    const setSort = (c, defDir) => () => this.setState(st => st.sortCol === c ? { sortDir: st.sortDir === 'desc' ? 'asc' : 'desc' } : { sortCol: c, sortDir: defDir });
+    const arrowFor = (c) => col === c ? (s.sortDir === 'desc' ? '▼' : '▲') : '';
+    const dayHeads = days.map((dy, i) => {
+      const c = 'd' + i, hot = col === c, latest = i === latestIdx;
+      return {
+        label: String(dy.d),
+        color: (hot || latest) ? '#0e5a61' : (dy.weekend ? '#b6bfca' : '#8b96a4'),
+        weight: (hot || latest) ? '700' : '500',
+        bg: latest ? '#e3f1f0' : (dy.weekend ? '#f7f8fa' : 'transparent'),
+        onClick: setSort(c, 'desc'),
+      };
+    });
+
+    const gtc = '142px repeat(' + n + ',30px) 52px 56px';
+    const minW = 142 + n * 30 + 52 + 56 + 8;
+    const dayLabels = days.map(dy => (dy.d === 1 || dy.d % 5 === 0 || dy.d === days[latestIdx].d) ? String(dy.d) : '');
+    const monthName = p.monthName || 'มิถุนายน';
+    const tipLabels = days.map(dy => dy.d + ' ' + monthName);
+    const valueIndices = days.map((dy, i) => (dy.d === 1 || dy.d % 5 === 0 || i === latestIdx) ? i : -1).filter(i => i >= 0);
+
+    return {
+      monthName: p.monthName || 'มิถุนายน', sample: !!p.sample,
+      causeLabel: isAll ? 'ทุกสาเหตุ' : 'ตัดสาเหตุลูกค้า',
+      trendSub: 'รายวัน · ' + (isAll ? 'ทุกสาเหตุ' : 'ตัดสาเหตุลูกค้า'),
+      grandAll: grand.all || [], grandExcl: grand.excl || [], dayLabels, tipLabels, valueIndices, latestIdx,
+      q: s.q, onSearch: (ev) => this.setState({ q: ev.target.value }),
+      dcCount: list.length,
+      gtc, minW, dayHeads, rows, grandRow,
+      sortName: { arrow: arrowFor('name'), color: col === 'name' ? '#0e5a61' : '#8b96a4', onClick: setSort('name', 'asc') },
+      sortAvg: { arrow: arrowFor('avg'), color: col === 'avg' ? '#0e5a61' : '#8b96a4', onClick: setSort('avg', 'desc') },
+      sortDelta: { arrow: arrowFor('delta'), color: col === 'delta' ? '#0e5a61' : '#8b96a4', onClick: setSort('delta', 'desc') },
+    };
+  }
+}
+</script>
+</body>
+</html>

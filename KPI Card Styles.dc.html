@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+  <style>
+    *{ box-sizing:border-box; }
+    html,body{ margin:0; }
+  </style>
+</helmet>
+
+<div style="font-family:'IBM Plex Sans Thai',sans-serif; background:#eaedf0; min-width:100%; min-height:100vh; padding:40px 44px 60px; box-sizing:border-box; color:#1b2430;">
+  <div style="max-width:880px; margin:0 auto;">
+    <div style="font-size:21px; font-weight:700;">รูปแบบการ์ด KPI · ตัวอย่างให้เลือก</div>
+    <div style="font-size:13px; color:#6b7682; margin-top:5px; margin-bottom:34px;">ใช้สี/ฟอนต์ชุดเดียวกับ Dashboard · ข้อมูลตัวอย่าง: ภาพรวม 74.6% (ต่ำกว่า 80 = แดง) · ทั่วไป 88.5% (เหลือง) · Coldchain 91.3% (น้ำเงิน)</div>
+
+    <!-- ============ A · ปัจจุบัน ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">A</div>
+        <div style="font-size:15px; font-weight:700;">ปัจจุบัน · เรียบ มินิมอล</div>
+        <div style="font-size:12px; color:#8b96a4;">แบบที่ใช้อยู่ตอนนี้</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+          <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +0.3 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+          <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +1.2 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums;">91.3%</div>
+          <div style="font-size:11px; margin-top:5px; color:#dd5043; font-weight:600;">▼ −0.4 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ B · แถบสถานะด้านบน ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">B</div>
+        <div style="font-size:15px; font-weight:700;">แถบสถานะด้านบน</div>
+        <div style="font-size:12px; color:#8b96a4;">เห็นสีระดับ SLA ได้ทันทีจากแถบบน</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+          <div style="height:4px; background:#dd5043;"></div>
+          <div style="padding:13px 16px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+            <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#dd5043;">74.6%</div>
+            <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +0.3 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+          <div style="height:4px; background:#dba31b;"></div>
+          <div style="padding:13px 16px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+            <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+            <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +1.2 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+          <div style="height:4px; background:#1d5fb0;"></div>
+          <div style="padding:13px 16px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+            <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+            <div style="font-size:11px; margin-top:5px; color:#dd5043; font-weight:600;">▼ −0.4 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ C · มีกราฟเส้นจิ๋ว ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">C</div>
+        <div style="font-size:15px; font-weight:700;">มีกราฟเส้นแนวโน้มจิ๋ว</div>
+        <div style="font-size:12px; color:#8b96a4;">เห็นทิศทางย้อนหลังในตัวการ์ด</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+            <svg width="74" height="26" viewBox="0 0 74 26" style="display:block; flex-shrink:0;"><polyline points="2,18 16,20 30,15 44,17 58,13 72,12" fill="none" stroke="#dd5043" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline><circle cx="72" cy="12" r="2.6" fill="#dd5043"></circle></svg>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#1f9d57; font-weight:600;">▲ +0.3 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+            <svg width="74" height="26" viewBox="0 0 74 26" style="display:block; flex-shrink:0;"><polyline points="2,16 16,17 30,12 44,13 58,9 72,7" fill="none" stroke="#5a8fd0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline><circle cx="72" cy="7" r="2.6" fill="#5a8fd0"></circle></svg>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#1f9d57; font-weight:600;">▲ +1.2 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+            <svg width="74" height="26" viewBox="0 0 74 26" style="display:block; flex-shrink:0;"><polyline points="2,8 16,7 30,10 44,9 58,11 72,13" fill="none" stroke="#5a8fd0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline><circle cx="72" cy="13" r="2.6" fill="#5a8fd0"></circle></svg>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#dd5043; font-weight:600;">▼ −0.4 <span style="color:#8b96a4; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ D · ป้าย Δ แบบ pill + จุดสถานะ ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">D</div>
+        <div style="font-size:15px; font-weight:700;">ป้าย Δ แบบ pill + จุดสถานะ</div>
+        <div style="font-size:12px; color:#8b96a4;">การเปลี่ยนแปลงเด่นขึ้น อ่านเร็ว</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:#dd5043;"></span>
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:9px; margin-top:8px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+            <div style="font-size:11px; font-weight:700; color:#1f9d57; background:#e9f6ee; padding:3px 8px; border-radius:20px;">▲ +0.3</div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#8b96a4;">เทียบเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:#dba31b;"></span>
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:9px; margin-top:8px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+            <div style="font-size:11px; font-weight:700; color:#1f9d57; background:#e9f6ee; padding:3px 8px; border-radius:20px;">▲ +1.2</div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#8b96a4;">เทียบเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:#1d5fb0;"></span>
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:9px; margin-top:8px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+            <div style="font-size:11px; font-weight:700; color:#dd5043; background:#fbe8e5; padding:3px 8px; border-radius:20px;">▼ −0.4</div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#8b96a4;">เทียบเดือนก่อน</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ E · วงแหวนเปอร์เซ็นต์ ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">E</div>
+        <div style="font-size:15px; font-weight:700;">วงแหวนเปอร์เซ็นต์ (เกจ)</div>
+        <div style="font-size:12px; color:#8b96a4;">เห็นระดับเทียบ 100% เป็นภาพ</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:14px;">
+          <svg width="58" height="58" viewBox="0 0 58 58" style="flex-shrink:0;"><circle cx="29" cy="29" r="24" fill="none" stroke="#eef1f4" stroke-width="7"></circle><circle cx="29" cy="29" r="24" fill="none" stroke="#dd5043" stroke-width="7" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="38.3" transform="rotate(-90 29 29)"></circle></svg>
+          <div style="min-width:0;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+            <div style="font-size:23px; font-weight:700; line-height:1; margin-top:4px; font-variant-numeric:tabular-nums;">74.6%</div>
+            <div style="font-size:11px; margin-top:4px; color:#1f9d57; font-weight:600;">▲ +0.3</div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:14px;">
+          <svg width="58" height="58" viewBox="0 0 58 58" style="flex-shrink:0;"><circle cx="29" cy="29" r="24" fill="none" stroke="#eef1f4" stroke-width="7"></circle><circle cx="29" cy="29" r="24" fill="none" stroke="#dba31b" stroke-width="7" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="17.3" transform="rotate(-90 29 29)"></circle></svg>
+          <div style="min-width:0;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+            <div style="font-size:23px; font-weight:700; line-height:1; margin-top:4px; font-variant-numeric:tabular-nums;">88.5%</div>
+            <div style="font-size:11px; margin-top:4px; color:#1f9d57; font-weight:600;">▲ +1.2</div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:14px;">
+          <svg width="58" height="58" viewBox="0 0 58 58" style="flex-shrink:0;"><circle cx="29" cy="29" r="24" fill="none" stroke="#eef1f4" stroke-width="7"></circle><circle cx="29" cy="29" r="24" fill="none" stroke="#1d5fb0" stroke-width="7" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="13.1" transform="rotate(-90 29 29)"></circle></svg>
+          <div style="min-width:0;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+            <div style="font-size:23px; font-weight:700; line-height:1; margin-top:4px; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+            <div style="font-size:11px; margin-top:4px; color:#dd5043; font-weight:600;">▼ −0.4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ F · พื้นแต้มสีอ่อนตามสถานะ ============ -->
+    <div style="margin-bottom:10px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">F</div>
+        <div style="font-size:15px; font-weight:700;">พื้นหลังแต้มสีอ่อนตามสถานะ</div>
+        <div style="font-size:12px; color:#8b96a4;">การ์ดทั้งใบสื่อสถานะ เด่นแต่ยังนุ่ม</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fdf3f1; border:1px solid #f3d9d3; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#9a4a3e; font-weight:600;">SLA ภาพรวม</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#c0392b;">74.6%</div>
+          <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +0.3 <span style="color:#a98a84; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+        <div style="background:#fdf8ec; border:1px solid #f0e3bf; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#8a6d18; font-weight:600;">SLA ทั่วไป</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#9a7b14;">88.5%</div>
+          <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +1.2 <span style="color:#a99a72; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+        <div style="background:#eef4fc; border:1px solid #d3e0f3; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#2c5891; font-weight:600;">SLA Coldchain</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+          <div style="font-size:11px; margin-top:5px; color:#dd5043; font-weight:600;">▼ −0.4 <span style="color:#7e93b2; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ G · การ์ดเข้ม (hero) ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">G</div>
+        <div style="font-size:15px; font-weight:700;">การ์ดเข้ม · ตัวเลขเด่นแบบ hero</div>
+        <div style="font-size:12px; color:#8b96a4;">เหมาะกับการ์ดหลักใบเดียวให้เด่นสุด</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#0e4248; border:1px solid #0e4248; border-radius:14px; padding:14px 17px;">
+          <div style="font-size:12px; color:#9cc4c5; font-weight:600;">SLA ภาพรวม</div>
+          <div style="font-size:26px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#fff;">74.6%</div>
+          <div style="font-size:11px; margin-top:6px; color:#7fdca8; font-weight:600;">▲ +0.3 <span style="color:#7f9c9d; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+        <div style="background:#13363c; border:1px solid #13363c; border-radius:14px; padding:14px 17px;">
+          <div style="font-size:12px; color:#9cc4c5; font-weight:600;">SLA ทั่วไป</div>
+          <div style="font-size:26px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#fff;">88.5%</div>
+          <div style="font-size:11px; margin-top:6px; color:#7fdca8; font-weight:600;">▲ +1.2 <span style="color:#7f9c9d; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+        <div style="background:#13363c; border:1px solid #13363c; border-radius:14px; padding:14px 17px;">
+          <div style="font-size:12px; color:#9cc4c5; font-weight:600;">SLA Coldchain</div>
+          <div style="font-size:26px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#8fc4f5;">91.3%</div>
+          <div style="font-size:11px; margin-top:6px; color:#f0a298; font-weight:600;">▼ −0.4 <span style="color:#7f9c9d; font-weight:400;">จากเดือนก่อน</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ H · มิเตอร์แท่งแนวนอน ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">H</div>
+        <div style="font-size:15px; font-weight:700;">มิเตอร์แท่งแนวนอน</div>
+        <div style="font-size:12px; color:#8b96a4;">เห็นระดับเทียบ 100% เบากว่าวงแหวน</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+            <div style="font-size:11px; color:#1f9d57; font-weight:600;">▲ +0.3</div>
+          </div>
+          <div style="font-size:24px; font-weight:700; margin-top:5px; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+          <div style="height:6px; background:#eef1f4; border-radius:6px; margin-top:9px; overflow:hidden;"><div style="width:74.6%; height:100%; background:#dd5043; border-radius:6px;"></div></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+            <div style="font-size:11px; color:#1f9d57; font-weight:600;">▲ +1.2</div>
+          </div>
+          <div style="font-size:24px; font-weight:700; margin-top:5px; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+          <div style="height:6px; background:#eef1f4; border-radius:6px; margin-top:9px; overflow:hidden;"><div style="width:88.5%; height:100%; background:#dba31b; border-radius:6px;"></div></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+            <div style="font-size:11px; color:#dd5043; font-weight:600;">▼ −0.4</div>
+          </div>
+          <div style="font-size:24px; font-weight:700; margin-top:5px; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+          <div style="height:6px; background:#eef1f4; border-radius:6px; margin-top:9px; overflow:hidden;"><div style="width:91.3%; height:100%; background:#1d5fb0; border-radius:6px;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ I · ไร้กรอบ มีเส้นคั่น ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">I</div>
+        <div style="font-size:15px; font-weight:700;">ไร้กรอบ มีเส้นคั่น · โปร่งสะอาด</div>
+        <div style="font-size:12px; color:#8b96a4;">การ์ดเดียวยาว แบ่งช่องด้วยเส้นบาง</div>
+      </div>
+      <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:6px 4px; display:grid; grid-template-columns:repeat(3,1fr);">
+        <div style="padding:13px 20px;">
+          <div style="font-size:12px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">SLA ภาพรวม</div>
+          <div style="font-size:27px; font-weight:700; margin-top:7px; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+          <div style="font-size:11px; margin-top:6px; color:#1f9d57; font-weight:600;">▲ +0.3 จากเดือนก่อน</div>
+        </div>
+        <div style="padding:13px 20px; border-left:1px solid #eef1f4;">
+          <div style="font-size:12px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">SLA ทั่วไป</div>
+          <div style="font-size:27px; font-weight:700; margin-top:7px; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+          <div style="font-size:11px; margin-top:6px; color:#1f9d57; font-weight:600;">▲ +1.2 จากเดือนก่อน</div>
+        </div>
+        <div style="padding:13px 20px; border-left:1px solid #eef1f4;">
+          <div style="font-size:12px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">SLA Coldchain</div>
+          <div style="font-size:27px; font-weight:700; margin-top:7px; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+          <div style="font-size:11px; margin-top:6px; color:#dd5043; font-weight:600;">▼ −0.4 จากเดือนก่อน</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ J · ตัวเลขใหญ่พิเศษ (editorial) ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">J</div>
+        <div style="font-size:15px; font-weight:700;">ตัวเลขใหญ่พิเศษ · ป้ายอยู่ล่าง</div>
+        <div style="font-size:12px; color:#8b96a4;">เน้นตัวเลขให้อ่านจากไกล</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:15px 18px;">
+          <div style="display:flex; align-items:baseline; gap:9px;">
+            <div style="font-size:34px; font-weight:700; line-height:.95; font-variant-numeric:tabular-nums;">74.6<span style="font-size:18px; color:#9aa3b0;">%</span></div>
+            <div style="font-size:12px; color:#1f9d57; font-weight:700;">▲ 0.3</div>
+          </div>
+          <div style="font-size:12px; color:#6b7682; font-weight:600; margin-top:9px; padding-top:9px; border-top:1px solid #f1f3f5;">SLA ภาพรวม</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:15px 18px;">
+          <div style="display:flex; align-items:baseline; gap:9px;">
+            <div style="font-size:34px; font-weight:700; line-height:.95; font-variant-numeric:tabular-nums;">88.5<span style="font-size:18px; color:#9aa3b0;">%</span></div>
+            <div style="font-size:12px; color:#1f9d57; font-weight:700;">▲ 1.2</div>
+          </div>
+          <div style="font-size:12px; color:#6b7682; font-weight:600; margin-top:9px; padding-top:9px; border-top:1px solid #f1f3f5;">SLA ทั่วไป</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:15px 18px;">
+          <div style="display:flex; align-items:baseline; gap:9px;">
+            <div style="font-size:34px; font-weight:700; line-height:.95; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3<span style="font-size:18px; color:#9bb6da;">%</span></div>
+            <div style="font-size:12px; color:#dd5043; font-weight:700;">▼ 0.4</div>
+          </div>
+          <div style="font-size:12px; color:#6b7682; font-weight:600; margin-top:9px; padding-top:9px; border-top:1px solid #f1f3f5;">SLA Coldchain</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ K · เทียบค่าเดือนก่อน (ghost) ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">K</div>
+        <div style="font-size:15px; font-weight:700;">เทียบค่าเดือนก่อนในตัว</div>
+        <div style="font-size:12px; color:#8b96a4;">เห็นค่าก่อน→หลัง ไม่ต้องเปิดกราฟ</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+          <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+            <div style="font-size:12px; color:#b6bfca; font-weight:600; font-variant-numeric:tabular-nums;">จาก 74.3%</div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#1f9d57; font-weight:600;">▲ +0.3 จุด</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+          <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+            <div style="font-size:12px; color:#b6bfca; font-weight:600; font-variant-numeric:tabular-nums;">จาก 87.3%</div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#1f9d57; font-weight:600;">▲ +1.2 จุด</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+          <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+            <div style="font-size:12px; color:#b6bfca; font-weight:600; font-variant-numeric:tabular-nums;">จาก 91.7%</div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#dd5043; font-weight:600;">▼ −0.4 จุด</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ L · กระชับแนวนอน ============ -->
+    <div style="margin-bottom:10px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">L</div>
+        <div style="font-size:15px; font-weight:700;">กระชับแนวนอน · ประหยัดพื้นที่</div>
+        <div style="font-size:12px; color:#8b96a4;">เหมาะเวลามี KPI หลายตัวเรียงกัน</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:12px; padding:12px 15px; display:flex; align-items:center; gap:12px;">
+          <span style="width:5px; align-self:stretch; border-radius:6px; background:#dd5043; flex-shrink:0;"></span>
+          <div style="min-width:0; flex:1;">
+            <div style="font-size:11.5px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+            <div style="font-size:11px; color:#1f9d57; font-weight:600; margin-top:2px;">▲ +0.3</div>
+          </div>
+          <div style="font-size:22px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:12px; padding:12px 15px; display:flex; align-items:center; gap:12px;">
+          <span style="width:5px; align-self:stretch; border-radius:6px; background:#dba31b; flex-shrink:0;"></span>
+          <div style="min-width:0; flex:1;">
+            <div style="font-size:11.5px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+            <div style="font-size:11px; color:#1f9d57; font-weight:600; margin-top:2px;">▲ +1.2</div>
+          </div>
+          <div style="font-size:22px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:12px; padding:12px 15px; display:flex; align-items:center; gap:12px;">
+          <span style="width:5px; align-self:stretch; border-radius:6px; background:#1d5fb0; flex-shrink:0;"></span>
+          <div style="min-width:0; flex:1;">
+            <div style="font-size:11.5px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+            <div style="font-size:11px; color:#dd5043; font-weight:600; margin-top:2px;">▼ −0.4</div>
+          </div>
+          <div style="font-size:22px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ M · วงกลมเต็ม + ตัวเลขกลาง ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">M</div>
+        <div style="font-size:15px; font-weight:700;">วงกลม + ตัวเลขตรงกลาง</div>
+        <div style="font-size:12px; color:#8b96a4;">เกจเต็มวง อ่านค่ากลางวง</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:15px 16px; text-align:center;">
+          <div style="position:relative; width:96px; height:96px; margin:0 auto;">
+            <svg width="96" height="96" viewBox="0 0 96 96"><circle cx="48" cy="48" r="40" fill="none" stroke="#eef1f4" stroke-width="9"></circle><circle cx="48" cy="48" r="40" fill="none" stroke="#dd5043" stroke-width="9" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="63.8" transform="rotate(-90 48 48)"></circle></svg>
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;">74.6%</div>
+          </div>
+          <div style="font-size:12px; color:#3a4654; font-weight:600; margin-top:10px;">SLA ภาพรวม</div>
+          <div style="font-size:11px; color:#1f9d57; font-weight:600; margin-top:3px;">▲ +0.3 จากเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:15px 16px; text-align:center;">
+          <div style="position:relative; width:96px; height:96px; margin:0 auto;">
+            <svg width="96" height="96" viewBox="0 0 96 96"><circle cx="48" cy="48" r="40" fill="none" stroke="#eef1f4" stroke-width="9"></circle><circle cx="48" cy="48" r="40" fill="none" stroke="#dba31b" stroke-width="9" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="28.9" transform="rotate(-90 48 48)"></circle></svg>
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;">88.5%</div>
+          </div>
+          <div style="font-size:12px; color:#3a4654; font-weight:600; margin-top:10px;">SLA ทั่วไป</div>
+          <div style="font-size:11px; color:#1f9d57; font-weight:600; margin-top:3px;">▲ +1.2 จากเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:15px 16px; text-align:center;">
+          <div style="position:relative; width:96px; height:96px; margin:0 auto;">
+            <svg width="96" height="96" viewBox="0 0 96 96"><circle cx="48" cy="48" r="40" fill="none" stroke="#eef1f4" stroke-width="9"></circle><circle cx="48" cy="48" r="40" fill="none" stroke="#1d5fb0" stroke-width="9" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="21.9" transform="rotate(-90 48 48)"></circle></svg>
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+          </div>
+          <div style="font-size:12px; color:#3a4654; font-weight:600; margin-top:10px;">SLA Coldchain</div>
+          <div style="font-size:11px; color:#dd5043; font-weight:600; margin-top:3px;">▼ −0.4 จากเดือนก่อน</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ N · ป้ายคำสถานะ ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">N</div>
+        <div style="font-size:15px; font-weight:700;">ป้ายคำบอกสถานะ</div>
+        <div style="font-size:12px; color:#8b96a4;">บอกตรงๆ ว่าผ่าน/เฝ้าระวัง/ต้องแก้</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+            <div style="font-size:10.5px; font-weight:700; color:#c0392b; background:#fbe8e5; padding:2px 9px; border-radius:20px;">ต้องเร่งแก้</div>
+          </div>
+          <div style="font-size:24px; font-weight:700; margin-top:7px; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+          <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +0.3 จากเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+            <div style="font-size:10.5px; font-weight:700; color:#9a7b14; background:#fbf1d9; padding:2px 9px; border-radius:20px;">เฝ้าระวัง</div>
+          </div>
+          <div style="font-size:24px; font-weight:700; margin-top:7px; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+          <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +1.2 จากเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+            <div style="font-size:10.5px; font-weight:700; color:#1d5fb0; background:#e7f0fb; padding:2px 9px; border-radius:20px;">ผ่านเกณฑ์</div>
+          </div>
+          <div style="font-size:24px; font-weight:700; margin-top:7px; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+          <div style="font-size:11px; margin-top:5px; color:#dd5043; font-weight:600;">▼ −0.4 จากเดือนก่อน</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ O · การ์ดสองโทน ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">O</div>
+        <div style="font-size:15px; font-weight:700;">การ์ดสองโทน · บล็อกสีซ้าย</div>
+        <div style="font-size:12px; color:#8b96a4;">ตัวเลขในบล็อกสี รายละเอียดด้านขวา</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden; display:flex;">
+          <div style="background:#fbe8e5; padding:14px 16px; display:flex; flex-direction:column; justify-content:center; min-width:96px;">
+            <div style="font-size:23px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color:#c0392b;">74.6%</div>
+            <div style="font-size:11px; color:#1f9d57; font-weight:600; margin-top:5px;">▲ +0.3</div>
+          </div>
+          <div style="padding:14px 16px; display:flex; flex-direction:column; justify-content:center;">
+            <div style="font-size:12.5px; color:#1b2430; font-weight:600;">SLA ภาพรวม</div>
+            <div style="font-size:11px; color:#8b96a4; margin-top:3px;">มิถุนายน 2026</div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden; display:flex;">
+          <div style="background:#fbf1d9; padding:14px 16px; display:flex; flex-direction:column; justify-content:center; min-width:96px;">
+            <div style="font-size:23px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color:#9a7b14;">88.5%</div>
+            <div style="font-size:11px; color:#1f9d57; font-weight:600; margin-top:5px;">▲ +1.2</div>
+          </div>
+          <div style="padding:14px 16px; display:flex; flex-direction:column; justify-content:center;">
+            <div style="font-size:12.5px; color:#1b2430; font-weight:600;">SLA ทั่วไป</div>
+            <div style="font-size:11px; color:#8b96a4; margin-top:3px;">มิถุนายน 2026</div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden; display:flex;">
+          <div style="background:#e7f0fb; padding:14px 16px; display:flex; flex-direction:column; justify-content:center; min-width:96px;">
+            <div style="font-size:23px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+            <div style="font-size:11px; color:#dd5043; font-weight:600; margin-top:5px;">▼ −0.4</div>
+          </div>
+          <div style="padding:14px 16px; display:flex; flex-direction:column; justify-content:center;">
+            <div style="font-size:12.5px; color:#1b2430; font-weight:600;">SLA Coldchain</div>
+            <div style="font-size:11px; color:#8b96a4; margin-top:3px;">มิถุนายน 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ P · แท่งกราฟจิ๋ว ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">P</div>
+        <div style="font-size:15px; font-weight:700;">แท่งกราฟจิ๋วในการ์ด</div>
+        <div style="font-size:12px; color:#8b96a4;">ทิศทางย้อนหลังแบบแท่ง</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+            <div style="display:flex; align-items:flex-end; gap:3px; height:26px;">
+              <span style="width:5px; height:40%; background:#f0c5c0; border-radius:2px;"></span><span style="width:5px; height:55%; background:#f0c5c0; border-radius:2px;"></span><span style="width:5px; height:48%; background:#f0c5c0; border-radius:2px;"></span><span style="width:5px; height:70%; background:#e79b92; border-radius:2px;"></span><span style="width:5px; height:82%; background:#dd5043; border-radius:2px;"></span>
+            </div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#1f9d57; font-weight:600;">▲ +0.3 จากเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+            <div style="display:flex; align-items:flex-end; gap:3px; height:26px;">
+              <span style="width:5px; height:55%; background:#bcd0ea; border-radius:2px;"></span><span style="width:5px; height:60%; background:#bcd0ea; border-radius:2px;"></span><span style="width:5px; height:72%; background:#bcd0ea; border-radius:2px;"></span><span style="width:5px; height:80%; background:#8db0dc; border-radius:2px;"></span><span style="width:5px; height:92%; background:#5a8fd0; border-radius:2px;"></span>
+            </div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#1f9d57; font-weight:600;">▲ +1.2 จากเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-top:6px;">
+            <div style="font-size:24px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+            <div style="display:flex; align-items:flex-end; gap:3px; height:26px;">
+              <span style="width:5px; height:90%; background:#bcd0ea; border-radius:2px;"></span><span style="width:5px; height:85%; background:#bcd0ea; border-radius:2px;"></span><span style="width:5px; height:92%; background:#bcd0ea; border-radius:2px;"></span><span style="width:5px; height:88%; background:#8db0dc; border-radius:2px;"></span><span style="width:5px; height:84%; background:#5a8fd0; border-radius:2px;"></span>
+            </div>
+          </div>
+          <div style="font-size:11px; margin-top:6px; color:#dd5043; font-weight:600;">▼ −0.4 จากเดือนก่อน</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Q · ตัวเลขลายน้ำ ============ -->
+    <div style="margin-bottom:38px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">Q</div>
+        <div style="font-size:15px; font-weight:700;">ตัวเลขลายน้ำเป็นพื้นหลัง</div>
+        <div style="font-size:12px; color:#8b96a4;">ดีไซน์เก๋ ตัวเลขใหญ่จางด้านหลัง</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px; position:relative; overflow:hidden;">
+          <div style="position:absolute; right:6px; bottom:-14px; font-size:62px; font-weight:800; color:#f4dcd8; line-height:1; font-variant-numeric:tabular-nums; pointer-events:none;">74</div>
+          <div style="position:relative;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+            <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums;">74.6%</div>
+            <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +0.3 จากเดือนก่อน</div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px; position:relative; overflow:hidden;">
+          <div style="position:absolute; right:6px; bottom:-14px; font-size:62px; font-weight:800; color:#f4eccf; line-height:1; font-variant-numeric:tabular-nums; pointer-events:none;">88</div>
+          <div style="position:relative;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+            <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums;">88.5%</div>
+            <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +1.2 จากเดือนก่อน</div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:13px 16px; position:relative; overflow:hidden;">
+          <div style="position:absolute; right:6px; bottom:-14px; font-size:62px; font-weight:800; color:#dde9f8; line-height:1; font-variant-numeric:tabular-nums; pointer-events:none;">91</div>
+          <div style="position:relative;">
+            <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+            <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+            <div style="font-size:11px; margin-top:5px; color:#dd5043; font-weight:600;">▼ −0.4 จากเดือนก่อน</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ R · เส้นขอบสีตามสถานะ (ghost) ============ -->
+    <div style="margin-bottom:10px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:13px;">
+        <div style="font-size:13px; font-weight:700; color:#0e5a61; background:#dcebec; padding:3px 11px; border-radius:20px;">R</div>
+        <div style="font-size:15px; font-weight:700;">เส้นขอบสีตามสถานะ · โปร่ง</div>
+        <div style="font-size:12px; color:#8b96a4;">ขอบสีบางๆ ไม่มีพื้นทึบ ดูเบา</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div style="background:#fff; border:1.5px solid #e8a59c; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ภาพรวม</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#c0392b;">74.6%</div>
+          <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +0.3 จากเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1.5px solid #e6cd86; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA ทั่วไป</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#9a7b14;">88.5%</div>
+          <div style="font-size:11px; margin-top:5px; color:#1f9d57; font-weight:600;">▲ +1.2 จากเดือนก่อน</div>
+        </div>
+        <div style="background:#fff; border:1.5px solid #9dbce8; border-radius:14px; padding:13px 16px;">
+          <div style="font-size:12px; color:#3a4654; font-weight:600;">SLA Coldchain</div>
+          <div style="font-size:24px; font-weight:700; margin-top:6px; line-height:1; font-variant-numeric:tabular-nums; color:#1d5fb0;">91.3%</div>
+          <div style="font-size:11px; margin-top:5px; color:#dd5043; font-weight:600;">▼ −0.4 จากเดือนก่อน</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
