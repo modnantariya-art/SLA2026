@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:14px; font-family:'IBM Plex Sans Thai',system-ui,-apple-system,sans-serif; color:#1b2430;">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+      <div style="font-size:14px; font-weight:700;">เทียบสัปดาห์ · 3 ช่วงล่าสุด</div>
+      <sc-if value="{{ sample }}"><span style="font-size:10.5px; font-weight:600; color:#9a6a08; background:#fbf1d9; border:1px solid #f0e0b6; padding:2px 9px; border-radius:20px;">ข้อมูลตัวอย่าง</span></sc-if>
+    </div>
+    <div style="font-size:11px; color:#8b96a4;">หมวด {{ catName }} · ทุกสาเหตุ + ตัดสาเหตุลูกค้า · ถ่วงน้ำหนักตามปริมาณงาน</div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:14px;">
+    <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:14px 18px;">
+      <div style="font-size:11.5px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">SLA · ทุกสาเหตุ</div>
+      <div style="font-size:26px; font-weight:700; margin-top:7px; line-height:1; font-variant-numeric:tabular-nums; color:{{ kpiAll.color }};">{{ kpiAll.v }}</div>
+      <div style="font-size:11px; margin-top:6px; color:{{ kpiAll.dColor }}; font-weight:600;">{{ kpiAll.dArrow }}{{ kpiAll.delta }} <span style="color:#9aa3b0; font-weight:400;">เทียบ {{ labelPrev }}</span></div>
+    </div>
+    <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:14px 18px;">
+      <div style="font-size:11.5px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">SLA · ตัดสาเหตุลูกค้า</div>
+      <div style="font-size:26px; font-weight:700; margin-top:7px; line-height:1; font-variant-numeric:tabular-nums; color:{{ kpiExcl.color }};">{{ kpiExcl.v }}</div>
+      <div style="font-size:11px; margin-top:6px; color:{{ kpiExcl.dColor }}; font-weight:600;">{{ kpiExcl.dArrow }}{{ kpiExcl.delta }} <span style="color:#9aa3b0; font-weight:400;">เทียบ {{ labelPrev }}</span></div>
+    </div>
+    <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:14px 18px;">
+      <div style="font-size:11.5px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">DC · ทุกสาเหตุ</div>
+      <div style="display:flex; align-items:baseline; gap:10px; margin-top:11px;">
+        <span style="font-size:21px; font-weight:700; color:#1f9d57; font-variant-numeric:tabular-nums;">▲ {{ cntAll.up }}</span>
+        <span style="font-size:13px; color:#c2cad3;">·</span>
+        <span style="font-size:21px; font-weight:700; color:#dd5043; font-variant-numeric:tabular-nums;">▼ {{ cntAll.down }}</span>
+        <sc-if value="{{ cntAll.showFlat }}">
+          <span style="font-size:13px; color:#c2cad3;">·</span>
+          <span style="font-size:21px; font-weight:700; color:#5f6b7a; font-variant-numeric:tabular-nums;">• {{ cntAll.flat }}</span>
+        </sc-if>
+      </div>
+      <div style="font-size:10.5px; color:#9aa3b0; margin-top:8px;">ดีขึ้น / แย่ลง · {{ labelPrev }} → {{ labelLast }}</div>
+    </div>
+    <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; padding:14px 18px;">
+      <div style="font-size:11.5px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">DC · ตัดสาเหตุลูกค้า</div>
+      <div style="display:flex; align-items:baseline; gap:10px; margin-top:11px;">
+        <span style="font-size:21px; font-weight:700; color:#1f9d57; font-variant-numeric:tabular-nums;">▲ {{ cntExcl.up }}</span>
+        <span style="font-size:13px; color:#c2cad3;">·</span>
+        <span style="font-size:21px; font-weight:700; color:#dd5043; font-variant-numeric:tabular-nums;">▼ {{ cntExcl.down }}</span>
+        <sc-if value="{{ cntExcl.showFlat }}">
+          <span style="font-size:13px; color:#c2cad3;">·</span>
+          <span style="font-size:21px; font-weight:700; color:#5f6b7a; font-variant-numeric:tabular-nums;">• {{ cntExcl.flat }}</span>
+        </sc-if>
+      </div>
+      <div style="font-size:10.5px; color:#9aa3b0; margin-top:8px;">ดีขึ้น / แย่ลง · {{ labelPrev }} → {{ labelLast }}</div>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; justify-content:flex-start; gap:10px 16px; flex-wrap:wrap;">
+    <input value="{{ q }}" oninput="{{ onSearch }}" placeholder="ค้นหาชื่อ DC…" style="width:220px; max-width:55vw; padding:8px 12px; border:1px solid #dce1e7; border-radius:10px; font-family:inherit; font-size:13px; background:#fff; color:#1b2430; outline:none;">
+  </div>
+
+  <sc-if value="{{ narrow }}">
+  <div style="display:flex; gap:6px; background:#eef1f4; border-radius:11px; padding:4px;">
+    <div onclick="{{ viewAll.onClick }}" style="flex:1; text-align:center; font-size:12.5px; font-weight:{{ viewAll.weight }}; padding:8px; border-radius:8px; color:{{ viewAll.color }}; background:{{ viewAll.bg }}; box-shadow:{{ viewAll.shadow }}; cursor:pointer; user-select:none; transition:background .12s;">ทุกสาเหตุ</div>
+    <div onclick="{{ viewExcl.onClick }}" style="flex:1; text-align:center; font-size:12.5px; font-weight:{{ viewExcl.weight }}; padding:8px; border-radius:8px; color:{{ viewExcl.color }}; background:{{ viewExcl.bg }}; box-shadow:{{ viewExcl.shadow }}; cursor:pointer; user-select:none; transition:background .12s;">ตัดสาเหตุลูกค้า</div>
+  </div>
+  </sc-if>
+
+  <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:auto; max-height:72vh;">
+    <div style="min-width:{{ minW }}px;">
+
+      <sc-if value="{{ wide }}">
+      <div style="display:grid; grid-template-columns:{{ gtc }}; align-items:stretch; position:sticky; top:0; z-index:3; background:#fff; border-bottom:1px solid #eef1f4; user-select:none;">
+        <div style="padding:8px 14px; position:sticky; left:0; z-index:4; background:#fff;"></div>
+        <div style="grid-column:span {{ groupSpan }}; text-align:center; padding:8px 6px; font-size:11.5px; font-weight:700; color:#33414f; background:#f6f8fa; border-left:1px solid #e4e8ed;">ทุกสาเหตุ</div>
+        <div style="grid-column:span {{ groupSpan }}; text-align:center; padding:8px 6px; font-size:11.5px; font-weight:700; color:#33414f; background:#eef3f8; border-left:1px solid #d9e3ee;">ตัดสาเหตุลูกค้า</div>
+      </div>
+      </sc-if>
+
+      <div style="display:grid; grid-template-columns:{{ gtc }}; align-items:center; padding:8px 14px; border-bottom:1px solid #eef1f4; position:sticky; top:33px; z-index:2; background:#fff; user-select:none;">
+        <div onclick="{{ sortName.onClick }}" style="font-size:11px; color:{{ sortName.color }}; font-weight:700; cursor:pointer; position:sticky; left:0; z-index:4; background:#fff; padding-right:8px;">DC <span style="color:#0e5a61; font-size:9px;">{{ sortName.arrow }}</span></div>
+        <sc-for list="{{ subHeads }}" as="h" hint-placeholder-count="10">
+          <div onclick="{{ h.onClick }}" style="text-align:center; font-size:10px; color:{{ h.color }}; font-weight:700; cursor:pointer; border-left:{{ h.bl }}; padding:0 6px; white-space:nowrap;">{{ h.label }} <span style="color:#0e5a61; font-size:9px;">{{ h.arrow }}</span></div>
+        </sc-for>
+      </div>
+
+      <sc-for list="{{ rows }}" as="d" hint-placeholder-count="18">
+        <div onclick="{{ d.onClick }}" style="display:grid; grid-template-columns:{{ gtc }}; align-items:center; padding:5px 14px; border-bottom:1px solid #f5f6f8; cursor:pointer;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0; padding-right:8px; position:sticky; left:0; z-index:1; background:#fff;">
+            <span style="font-size:10px; font-weight:700; color:#b6bfca; min-width:16px; text-align:center; font-variant-numeric:tabular-nums; flex-shrink:0;">{{ d.rank }}</span>
+            <span style="font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</span>
+          </div>
+          <sc-for list="{{ d.cells }}" as="c" hint-placeholder-count="10">
+            <div style="text-align:center; font-size:12px; font-weight:{{ c.weight }}; color:{{ c.color }}; font-variant-numeric:tabular-nums; border-left:{{ c.bl }}; padding:0 6px; white-space:nowrap;">{{ c.dArrow }}{{ c.v }}</div>
+          </sc-for>
+        </div>
+      </sc-for>
+      <sc-if value="{{ emptyTable }}"><div style="padding:26px 14px; text-align:center; font-size:12.5px; color:#9aa3b0;">ไม่มี DC ในกลุ่มนี้</div></sc-if>
+
+      <sc-if value="{{ hasGrand }}">
+      <div style="display:grid; grid-template-columns:{{ gtc }}; align-items:center; padding:8px 14px; border-top:2px solid #e4e8ed; background:#f8fafb;">
+        <div style="font-size:12.5px; font-weight:700; color:#0e5a61; position:sticky; left:0; z-index:1; background:#f8fafb; padding-right:8px;">{{ grandRow.name }}</div>
+        <sc-for list="{{ grandRow.cells }}" as="c" hint-placeholder-count="10">
+          <div style="text-align:center; font-size:12px; font-weight:700; color:{{ c.color }}; font-variant-numeric:tabular-nums; border-left:{{ c.bl }}; padding:0 6px;">{{ c.dArrow }}{{ c.v }}</div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:10.5px; color:#8b96a4;">
+    <span style="display:flex; align-items:center; gap:5px;"><span style="width:9px; height:9px; border-radius:2px; background:#1d5fb0;"></span>≥ 90%</span>
+    <span style="display:flex; align-items:center; gap:5px;"><span style="width:9px; height:9px; border-radius:2px; background:#dd5043;"></span>&lt; 80%</span>
+    <span>Δ = {{ labelLast }} − {{ labelPrev }} · <b style="color:#1f9d57;">เขียว</b> ดีขึ้น · <b style="color:#dd5043;">แดง</b> แย่ลง</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:640},&quot;rows&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any[]&quot;},&quot;grand&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;windows&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any[]&quot;},&quot;windowA&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;windowB&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;ctxLabel&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;มิ.ย.&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;catName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;รวม&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;narrow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;sample&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onPick&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(name:string)=&gt;void&quot;}}">
+class Component extends DCLogic {
+  state = { q: '', sortCol: 'dAll', sortDir: 'asc', view: 'all' };
+
+  fmt(v) { return v == null ? '—' : v.toFixed(1); }
+  colVal(v) { return v == null ? '#9aa3b0' : (v >= 90 ? '#1d5fb0' : (v < 80 ? '#dd5043' : '#1b2430')); }
+  dColor(v) { return v == null ? '#8b96a4' : (v > 0 ? '#1f9d57' : v < 0 ? '#dd5043' : '#8b96a4'); }
+  dArrow(v) { return v == null ? '' : (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '• '); }
+  fmtD(v) { return v == null ? '—' : Math.abs(v).toFixed(1); }
+  metricOf(w, isAll) { if (!w) return null; return isAll ? w.all : w.excl; }
+  ctxOf(arr) { return (Array.isArray(arr) && arr.length) ? arr[arr.length - 1] : null; }
+
+  renderVals() {
+    const p = this.props, s = this.state;
+    const narrow = !!p.narrow;
+    const wide = !narrow;
+    const view = s.view === 'excl' ? 'excl' : 'all';
+    const allRows = Array.isArray(p.rows) ? p.rows : [];
+    const grand = p.grand || {};
+
+    let windows = Array.isArray(p.windows) ? p.windows : [];
+    if (!windows.length && (p.windowA || p.windowB)) windows = [p.windowA, p.windowB].filter(Boolean);
+    const N = windows.length;
+    const labels = windows.map(w => (w && w.label) || '');
+    const lastI = N - 1, prevI = N - 2;
+    const labelLast = labels[lastI] || 'ช่วงล่าสุด';
+    const labelPrev = labels[prevI] || 'ช่วงก่อนหน้า';
+    const ctxLabel = p.ctxLabel || 'เดือนล่าสุด';
+
+    const calc = (r) => {
+      const wins = Array.isArray(r.wins) ? r.wins : [];
+      const valsAll = windows.map((w, i) => this.metricOf(wins[i], true));
+      const valsExcl = windows.map((w, i) => this.metricOf(wins[i], false));
+      const dAll = (valsAll[lastI] != null && valsAll[prevI] != null) ? valsAll[lastI] - valsAll[prevI] : null;
+      const dExcl = (valsExcl[lastI] != null && valsExcl[prevI] != null) ? valsExcl[lastI] - valsExcl[prevI] : null;
+      const cAll = this.ctxOf(r.mAll), cExcl = this.ctxOf(r.mExcl);
+      return { name: r.name, valsAll, valsExcl, dAll, dExcl, cAll, cExcl };
+    };
+    const base = allRows.map(calc);
+    const onPick = (name) => () => { if (typeof p.onPick === 'function') p.onPick(name); };
+
+    const withV = base.filter(d => d.dAll != null);
+    const cUp = withV.filter(d => d.dAll > 0).length, cDown = withV.filter(d => d.dAll < 0).length, cFlat = withV.filter(d => d.dAll === 0).length;
+    const withE = base.filter(d => d.dExcl != null);
+    const eUp = withE.filter(d => d.dExcl > 0).length, eDown = withE.filter(d => d.dExcl < 0).length, eFlat = withE.filter(d => d.dExcl === 0).length;
+
+    let list = base;
+    if (s.q.trim()) { const q = s.q.trim(); list = list.filter(d => d.name.indexOf(q) !== -1); }
+    const emptyTable = list.length === 0;
+
+    const col = s.sortCol, dir = s.sortDir === 'asc' ? 1 : -1;
+    const sval = (d) => {
+      if (col === 'dAll') return d.dAll; if (col === 'dExcl') return d.dExcl;
+      if (col === 'cAll') return d.cAll; if (col === 'cExcl') return d.cExcl;
+      if (col.slice(0, 4) === 'wAll') return d.valsAll[parseInt(col.slice(4), 10)];
+      if (col.slice(0, 5) === 'wExcl') return d.valsExcl[parseInt(col.slice(5), 10)];
+      return d.dAll;
+    };
+    const sorted = [...list].sort((x, y) => {
+      if (col === 'name') return dir * x.name.localeCompare(y.name, 'th');
+      const xv = sval(x), yv = sval(y);
+      if (xv == null && yv == null) return 0; if (xv == null) return 1; if (yv == null) return -1;
+      return dir * (xv - yv);
+    });
+
+    const ctxCell = (v) => ({ v: this.fmt(v), color: '#9aa3b0', weight: '600', dArrow: '', bl: '1px solid #e4e8ed' });
+    const valCell = (v, bl) => ({ v: this.fmt(v), color: this.colVal(v), weight: '600', dArrow: '', bl: bl ? '1px solid #e4e8ed' : 'none' });
+    const dCell = (v) => ({ v: this.fmtD(v), color: this.dColor(v), weight: '700', dArrow: this.dArrow(v), bl: 'none' });
+    const cellsAll = (d) => [...d.valsAll.map((v, i) => valCell(v, i === 0)), dCell(d.dAll)];
+    const cellsExcl = (d) => [...d.valsExcl.map((v, i) => valCell(v, i === 0)), dCell(d.dExcl)];
+    const rowCells = (d) => narrow ? (view === 'excl' ? cellsExcl(d) : cellsAll(d)) : [...cellsAll(d), ...cellsExcl(d)];
+
+    const rows = sorted.map((d, ri) => ({ rank: ri + 1, name: d.name, onClick: onPick(d.name), cells: rowCells(d) }));
+
+    // grand
+    const gWins = Array.isArray(grand.wins) ? grand.wins : [];
+    const gAll = windows.map((w, i) => this.metricOf(gWins[i], true));
+    const gExcl = windows.map((w, i) => this.metricOf(gWins[i], false));
+    const gCAll = this.ctxOf(grand.mAll), gCExcl = this.ctxOf(grand.mExcl);
+    const gdAll = (gAll[lastI] != null && gAll[prevI] != null) ? gAll[lastI] - gAll[prevI] : null;
+    const gdExcl = (gExcl[lastI] != null && gExcl[prevI] != null) ? gExcl[lastI] - gExcl[prevI] : null;
+    const hasGrand = gAll.concat(gExcl).some(v => v != null);
+    const gAllCells = [...gAll.map((v, i) => valCell(v, i === 0)), dCell(gdAll)];
+    const gExclCells = [...gExcl.map((v, i) => valCell(v, i === 0)), dCell(gdExcl)];
+    const grandRow = { name: 'รวมทั้งหมด', cells: narrow ? (view === 'excl' ? gExclCells : gAllCells) : [...gAllCells, ...gExclCells] };
+
+    // headers
+    const setSort = (c, defDir) => () => this.setState(st => st.sortCol === c ? { sortDir: st.sortDir === 'desc' ? 'asc' : 'desc' } : { sortCol: c, sortDir: defDir });
+    const arrowFor = (c) => col === c ? (s.sortDir === 'desc' ? '▼' : '▲') : '';
+    const hCol = (c) => col === c ? '#0e5a61' : '#8b96a4';
+    const head = (c, label, defDir, bl) => ({ label, arrow: arrowFor(c), color: hCol(c), onClick: setSort(c, defDir), bl: bl ? '1px solid #e9edf1' : 'none' });
+    const headsAll = [...windows.map((w, i) => head('wAll' + i, labels[i], 'desc', i === 0)), head('dAll', 'Δ', 'asc', false)];
+    const headsExcl = [...windows.map((w, i) => head('wExcl' + i, labels[i], 'desc', i === 0)), head('dExcl', 'Δ', 'asc', false)];
+    const subHeads = narrow ? (view === 'excl' ? headsExcl : headsAll) : [...headsAll, ...headsExcl];
+
+    const groupSpan = N + 1;                        // N ช่วง + Δ
+    const gtc = narrow
+      ? 'minmax(96px,1.2fr) repeat(' + groupSpan + ',minmax(50px,1fr))'
+      : 'minmax(120px,1.3fr) repeat(' + (groupSpan * 2) + ',minmax(48px,0.7fr))';
+    const minW = narrow ? (110 + groupSpan * 54) : (140 + groupSpan * 2 * 56);
+
+    const setView = (v) => () => this.setState({ view: v });
+    const segOn = { color: '#0e5a61', bg: '#ffffff', shadow: '0 1px 2px rgba(16,40,44,.14)', weight: '700' };
+    const segOff = { color: '#5f6b7a', bg: 'transparent', shadow: 'none', weight: '600' };
+    const viewAll = Object.assign({ onClick: setView('all') }, view === 'all' ? segOn : segOff);
+    const viewExcl = Object.assign({ onClick: setView('excl') }, view === 'excl' ? segOn : segOff);
+
+    const kpiVal = (v) => v == null ? '—' : v.toFixed(1) + '%';
+    const kpiAll = { v: kpiVal(gAll[lastI]), color: this.colVal(gAll[lastI]), delta: this.fmtD(gdAll), dColor: this.dColor(gdAll), dArrow: this.dArrow(gdAll) };
+    const kpiExcl = { v: kpiVal(gExcl[lastI]), color: this.colVal(gExcl[lastI]), delta: this.fmtD(gdExcl), dColor: this.dColor(gdExcl), dArrow: this.dArrow(gdExcl) };
+    const cntAll = { up: String(cUp), down: String(cDown), flat: String(cFlat), showFlat: cFlat > 0 };
+    const cntExcl = { up: String(eUp), down: String(eDown), flat: String(eFlat), showFlat: eFlat > 0 };
+
+    return {
+      catName: p.catName || 'รวม', sample: !!p.sample,
+      labelLast, labelPrev,
+      narrow, wide, viewAll, viewExcl, groupSpan,
+      kpiAll, kpiExcl, cntAll, cntExcl,
+      emptyTable, rows, grandRow, hasGrand,
+      q: s.q, onSearch: (ev) => this.setState({ q: ev.target.value }),
+      gtc, minW, subHeads,
+      sortName: { arrow: arrowFor('name'), color: hCol('name'), onClick: setSort('name', 'asc') },
+    };
+  }
+}
+</script>
+</body>
+</html>

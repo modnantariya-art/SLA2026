@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:16px;">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+      <div style="font-size:14px; font-weight:700;">เทียบสัปดาห์ · 3 ช่วงล่าสุด</div>
+      <sc-if value="{{ sample }}"><span style="font-size:10.5px; font-weight:600; color:#9a6a08; background:#fbf1d9; border:1px solid #f0e0b6; padding:2px 9px; border-radius:20px;">ข้อมูลตัวอย่าง</span></sc-if>
+    </div>
+    <div style="font-size:11px; color:#8b96a4;">{{ causeLabel }} · หมวด {{ catName }} · เทียบค่าเฉลี่ยถ่วงน้ำหนักตามปริมาณงาน</div>
+  </div>
+
+  <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; display:grid; grid-template-columns:{{ sumGtc }};">
+    <sc-for list="{{ winCards }}" as="c" hint-placeholder-count="3">
+      <div style="padding:12px 18px; border-left:{{ c.bl }};">
+        <div style="font-size:11px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">ค่าเฉลี่ย {{ c.label }}</div>
+        <div style="font-size:22px; font-weight:700; margin-top:5px; font-variant-numeric:tabular-nums; line-height:1; color:{{ c.color }};">{{ c.v }}</div>
+        <div style="font-size:10px; margin-top:4px; color:#9aa3b0;">{{ c.note }}</div>
+      </div>
+    </sc-for>
+    <div style="padding:12px 18px; border-left:1px solid #eef1f4;">
+      <div style="font-size:11px; color:#8b96a4; font-weight:600; letter-spacing:.2px;">เปลี่ยนแปลง (ล่าสุด − ก่อนหน้า)</div>
+      <div style="font-size:22px; font-weight:800; margin-top:5px; font-variant-numeric:tabular-nums; line-height:1; color:{{ gD.color }};">{{ gD.arrow }} {{ gD.v }}</div>
+      <div style="font-size:10px; margin-top:4px; color:#7a8593;"><b style="color:#1f9d57;">{{ nUp }}</b> ดีขึ้น · <b style="color:#dd5043;">{{ nDown }}</b> แย่ลง</div>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:baseline; gap:8px; margin-top:2px;">
+    <div style="font-size:12px; font-weight:700; color:#3a4654; letter-spacing:.2px;">ผลในช่วง {{ labelLast }}</div>
+    <div style="font-size:11px; color:#9aa3b0;">ค่าจริงสูงสุด/ต่ำสุดในช่วงล่าสุด</div>
+  </div>
+  <div style="display:grid; grid-template-columns:{{ moverGtc }}; gap:14px;">
+    <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+      <div style="padding:13px 16px; border-bottom:1px solid #eef1f4; display:flex; align-items:center; gap:8px;">
+        <span style="width:9px; height:9px; border-radius:50%; background:#1d5fb0;"></span>
+        <div style="font-size:13.5px; font-weight:700;">{{ labelLast }} · ดีสุด</div>
+        <div style="font-size:11px; color:#8b96a4; margin-left:auto;">ค่าสูงสุดในช่วง</div>
+      </div>
+      <div style="padding:5px 7px 8px;">
+        <sc-for list="{{ bestLast }}" as="d" hint-placeholder-count="6">
+          <div onclick="{{ d.onClick }}" style="display:flex; align-items:center; gap:10px; padding:6px 9px; border-radius:8px; cursor:pointer;">
+            <div style="min-width:0; margin-right:auto; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+            <div style="font-size:11px; color:{{ d.dColor }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.dArrow }} {{ d.delta }}</div>
+            <div style="font-size:11.5px; font-weight:700; color:#1d5fb0; background:#e7f0fb; padding:4px 8px; border-radius:8px; font-variant-numeric:tabular-nums; min-width:50px; text-align:center;">{{ d.b }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noBest }}"><div style="padding:14px 10px; text-align:center; font-size:12px; color:#9aa3b0;">ไม่มีข้อมูลในช่วงนี้</div></sc-if>
+      </div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+      <div style="padding:13px 16px; border-bottom:1px solid #eef1f4; display:flex; align-items:center; gap:8px;">
+        <span style="width:9px; height:9px; border-radius:50%; background:#dd5043;"></span>
+        <div style="font-size:13.5px; font-weight:700;">{{ labelLast }} · แย่สุด</div>
+        <div style="font-size:11px; color:#8b96a4; margin-left:auto;">ค่าต่ำสุดในช่วง</div>
+      </div>
+      <div style="padding:5px 7px 8px;">
+        <sc-for list="{{ worstLast }}" as="d" hint-placeholder-count="6">
+          <div onclick="{{ d.onClick }}" style="display:flex; align-items:center; gap:10px; padding:6px 9px; border-radius:8px; cursor:pointer;">
+            <div style="min-width:0; margin-right:auto; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+            <div style="font-size:11px; color:{{ d.dColor }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.dArrow }} {{ d.delta }}</div>
+            <div style="font-size:11.5px; font-weight:700; color:#bf372a; background:#fbe5e1; padding:4px 8px; border-radius:8px; font-variant-numeric:tabular-nums; min-width:50px; text-align:center;">{{ d.b }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noWorst }}"><div style="padding:14px 10px; text-align:center; font-size:12px; color:#9aa3b0;">ไม่มีข้อมูลในช่วงนี้</div></sc-if>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:baseline; gap:8px; margin-top:2px;">
+    <div style="font-size:12px; font-weight:700; color:#3a4654; letter-spacing:.2px;">เทียบกับช่วงก่อนหน้า</div>
+    <div style="font-size:11px; color:#9aa3b0;">{{ labelPrev }} → {{ labelLast }} · เปลี่ยนแปลงมากสุด</div>
+  </div>
+  <div style="display:grid; grid-template-columns:{{ moverGtc }}; gap:14px;">
+    <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+      <div style="padding:13px 16px; border-bottom:1px solid #eef1f4; display:flex; align-items:center; gap:8px;">
+        <span style="width:9px; height:9px; border-radius:50%; background:#1f9d57;"></span>
+        <div style="font-size:13.5px; font-weight:700;">ดีขึ้นมากสุด</div>
+        <div style="font-size:11px; color:#8b96a4; margin-left:auto;">{{ labelPrev }} → {{ labelLast }}</div>
+      </div>
+      <div style="padding:5px 7px 8px;">
+        <sc-for list="{{ improvers }}" as="d" hint-placeholder-count="6">
+          <div onclick="{{ d.onClick }}" style="display:flex; align-items:center; gap:10px; padding:6px 9px; border-radius:8px; cursor:pointer;">
+            <div style="min-width:0; margin-right:auto; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+            <div style="font-size:11px; color:#7a8593; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.a }} → {{ d.b }}</div>
+            <div style="font-size:11.5px; font-weight:700; color:#1f9d57; background:#e9f6ee; padding:4px 8px; border-radius:8px; font-variant-numeric:tabular-nums; min-width:50px; text-align:center;">{{ d.delta }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noUp }}"><div style="padding:14px 10px; text-align:center; font-size:12px; color:#9aa3b0;">ไม่มี DC ที่ดีขึ้นในช่วงนี้</div></sc-if>
+      </div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #e4e8ed; border-radius:14px; overflow:hidden;">
+      <div style="padding:13px 16px; border-bottom:1px solid #eef1f4; display:flex; align-items:center; gap:8px;">
+        <span style="width:9px; height:9px; border-radius:50%; background:#dd5043;"></span>
+        <div style="font-size:13.5px; font-weight:700;">แย่ลงมากสุด</div>
+        <div style="font-size:11px; color:#8b96a4; margin-left:auto;">{{ labelPrev }} → {{ labelLast }}</div>
+      </div>
+      <div style="padding:5px 7px 8px;">
+        <sc-for list="{{ decliners }}" as="d" hint-placeholder-count="6">
+          <div onclick="{{ d.onClick }}" style="display:flex; align-items:center; gap:10px; padding:6px 9px; border-radius:8px; cursor:pointer;">
+            <div style="min-width:0; margin-right:auto; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div>
+            <div style="font-size:11px; color:#7a8593; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ d.a }} → {{ d.b }}</div>
+            <div style="font-size:11.5px; font-weight:700; color:#bf372a; background:#fbe5e1; padding:4px 8px; border-radius:8px; font-variant-numeric:tabular-nums; min-width:50px; text-align:center;">{{ d.delta }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noDown }}"><div style="padding:14px 10px; text-align:center; font-size:12px; color:#9aa3b0;">ไม่มี DC ที่แย่ลงในช่วงนี้</div></sc-if>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:640},&quot;rows&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any[]&quot;},&quot;grand&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;metric&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;all&quot;,&quot;excl&quot;],&quot;default&quot;:&quot;all&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;windows&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any[]&quot;},&quot;windowA&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;windowB&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;catName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;รวม&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;months&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;narrow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;sample&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onPick&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(name:string)=&gt;void&quot;}}">
+class Component extends DCLogic {
+  state = { q: '', sortCol: 'delta', sortDir: 'asc', cng: 'all' };
+
+  fmt(v) { return v == null ? '—' : v.toFixed(1) + '%'; }
+  fmtD(v) { if (v == null) return { s: '—', c: '#8b96a4', a: '' }; const sg = v > 0 ? '+' : ''; return { s: sg + v.toFixed(1), c: v > 0 ? '#1f9d57' : v < 0 ? '#dd5043' : '#8b96a4', a: v > 0 ? '▲' : v < 0 ? '▼' : '•' }; }
+  colVal(v) { return v == null ? '#9aa3b0' : (v >= 90 ? '#1d5fb0' : (v < 80 ? '#dd5043' : '#1b2430')); }
+  heatCell(v) {
+    let color;
+    if (v == null) color = '#b6bec7';
+    else if (v >= 90) color = '#3f74b0';
+    else if (v >= 80) color = '#5c6772';
+    else if (v >= 70) color = '#bf564a';
+    else color = '#b53f31';
+    return { v: v == null ? '—' : v.toFixed(1) + '%', color };
+  }
+  metricOf(w, isAll) { if (!w) return null; return isAll ? w.all : w.excl; }
+
+  renderVals() {
+    const p = this.props, s = this.state;
+    const metric = p.metric === 'excl' ? 'excl' : 'all';
+    const isAll = metric === 'all';
+    const narrow = !!p.narrow;
+    const months = Array.isArray(p.months) ? p.months : [];
+    const nMonths = narrow ? 0 : months.length;
+
+    // windows (recent-N) — fallback ไป windowA/windowB ถ้าไม่มี
+    let windows = Array.isArray(p.windows) ? p.windows : [];
+    if (!windows.length && (p.windowA || p.windowB)) windows = [p.windowA, p.windowB].filter(Boolean);
+    const N = windows.length;
+    const labels = windows.map(w => (w && w.label) || '');
+    const lastI = N - 1, prevI = N - 2;
+    const labelLast = labels[lastI] || 'ช่วงล่าสุด';
+    const labelPrev = labels[prevI] || 'ช่วงก่อนหน้า';
+
+    const allRows = Array.isArray(p.rows) ? p.rows : [];
+    const grand = p.grand || {};
+    const mKey = isAll ? 'mAll' : 'mExcl';
+
+    const base = allRows.map(r => {
+      const wins = Array.isArray(r.wins) ? r.wins : [];
+      const vals = windows.map((w, i) => this.metricOf(wins[i], isAll));
+      const last = vals[lastI], prev = vals[prevI];
+      const delta = (last != null && prev != null) ? last - prev : null;
+      const ms = Array.isArray(r[mKey]) ? r[mKey] : [];
+      return { name: r.name, vals, last, prev, delta, ms };
+    });
+
+    const onPick = (name) => () => { if (typeof p.onPick === 'function') p.onPick(name); };
+
+    const withV = base.filter(d => d.delta != null);
+    const nUp = withV.filter(d => d.delta > 0).length;
+    const nDown = withV.filter(d => d.delta < 0).length;
+
+    const moverItem = (d) => { const dd = this.fmtD(d.delta); return { name: d.name, a: this.fmt(d.prev), b: this.fmt(d.last), delta: dd.s, onClick: onPick(d.name) }; };
+    const improvers = withV.filter(d => d.delta > 0).sort((x, y) => y.delta - x.delta).slice(0, 7).map(moverItem);
+    const decliners = withV.filter(d => d.delta < 0).sort((x, y) => x.delta - y.delta).slice(0, 7).map(moverItem);
+
+    // อันดับจริงในช่วงล่าสุด: ดีสุด / แย่สุด
+    const withLast = base.filter(d => d.last != null);
+    const absItem = (d) => { const dd = this.fmtD(d.delta); return { name: d.name, b: this.fmt(d.last), delta: dd.s, dColor: dd.c, dArrow: dd.a, onClick: onPick(d.name) }; };
+    const bestLast = [...withLast].sort((x, y) => y.last - x.last).slice(0, 7).map(absItem);
+    const worstLast = [...withLast].sort((x, y) => x.last - y.last).slice(0, 7).map(absItem);
+
+    // ตัวกรองทิศทาง
+    const cUp = withV.filter(d => d.delta > 0).length;
+    const cDown = withV.filter(d => d.delta < 0).length;
+    const cFlat = withV.filter(d => d.delta === 0).length;
+    const cng = s.cng;
+    const setCng = (k) => () => this.setState({ cng: k });
+    const chip = (k, label, n) => {
+      const active = cng === k;
+      return { label: n == null ? label : label + ' (' + n + ')', onClick: setCng(k),
+        color: active ? '#0e5a61' : '#5f6b7a', bg: active ? '#ffffff' : 'transparent',
+        shadow: active ? '0 1px 2px rgba(16,40,44,.14)' : 'none', weight: active ? '700' : '600' };
+    };
+    const cngChips = [chip('all', 'ทั้งหมด', null), chip('up', 'ดีขึ้น', cUp), chip('down', 'แย่ลง', cDown), chip('flat', 'คงเดิม', cFlat)];
+
+    let list = base;
+    if (cng === 'up') list = list.filter(d => d.delta != null && d.delta > 0);
+    else if (cng === 'down') list = list.filter(d => d.delta != null && d.delta < 0);
+    else if (cng === 'flat') list = list.filter(d => d.delta === 0);
+    if (s.q.trim()) { const q = s.q.trim(); list = list.filter(d => d.name.indexOf(q) !== -1); }
+    const emptyTable = list.length === 0;
+
+    const col = s.sortCol, dir = s.sortDir === 'asc' ? 1 : -1;
+    const sval = (d) => { if (col === 'delta') return d.delta; if (col.charAt(0) === 'w') return d.vals[parseInt(col.slice(1), 10)]; return d.delta; };
+    const sorted = [...list].sort((x, y) => {
+      if (col === 'name') return dir * x.name.localeCompare(y.name, 'th');
+      const xv = sval(x), yv = sval(y);
+      if (xv == null && yv == null) return 0; if (xv == null) return 1; if (yv == null) return -1;
+      return dir * (xv - yv);
+    });
+
+    const rows = sorted.map((d, ri) => {
+      const dd = this.fmtD(d.delta);
+      const mcells = [];
+      for (let i = 0; i < nMonths; i++) mcells.push(this.heatCell(d.ms[i] == null ? null : d.ms[i]));
+      const wcells = d.vals.map((v, i) => ({ v: this.fmt(v), color: i === lastI ? this.colVal(v) : '#5f6b7a', bl: i === 0 ? '1px solid #e9edf1' : 'none' }));
+      return { rank: ri + 1, name: d.name, mcells, wcells, delta: dd.s, dColor: dd.c, dArrow: dd.a, onClick: onPick(d.name) };
+    });
+
+    // การ์ดสรุปต่อช่วง (grand)
+    const gWins = Array.isArray(grand.wins) ? grand.wins : [];
+    const gVals = windows.map((w, i) => this.metricOf(gWins[i], isAll));
+    const winCards = windows.map((w, i) => ({
+      label: labels[i], v: this.fmt(gVals[i]), color: this.colVal(gVals[i]),
+      note: i === lastI ? 'ช่วงล่าสุด' : (i === 0 ? 'ช่วงแรก' : 'ช่วงกลาง'),
+      bl: i === 0 ? 'none' : '1px solid #eef1f4',
+    }));
+    const gLast = gVals[lastI], gPrev = gVals[prevI];
+    const gDelta = (gLast != null && gPrev != null) ? gLast - gPrev : null;
+    const gdd = this.fmtD(gDelta);
+    const gD = { v: gDelta == null ? '—' : Math.abs(gDelta).toFixed(1), arrow: gdd.a, color: gdd.c };
+
+    const setSort = (c, defDir) => () => this.setState(st => st.sortCol === c ? { sortDir: st.sortDir === 'desc' ? 'asc' : 'desc' } : { sortCol: c, sortDir: defDir });
+    const arrowFor = (c) => col === c ? (s.sortDir === 'desc' ? '▼' : '▲') : '';
+    const winHeads = windows.map((w, i) => ({
+      label: labels[i], arrow: arrowFor('w' + i), color: col === ('w' + i) ? '#0e5a61' : '#8b96a4',
+      onClick: setSort('w' + i, 'desc'), bl: i === 0 ? '1px solid #e9edf1' : 'none',
+    }));
+
+    // grid
+    const sumGtc = 'repeat(' + (N + 1) + ',1fr)';
+    const gtc = narrow
+      ? 'minmax(110px,1.3fr) repeat(' + N + ',minmax(58px,1fr)) minmax(56px,0.9fr)'
+      : 'minmax(150px,1.3fr) repeat(' + nMonths + ',minmax(42px,0.58fr)) repeat(' + N + ',minmax(72px,1fr)) minmax(72px,1fr)';
+    const minW = narrow ? (150 + N * 62 + 60) : (240 + nMonths * 46 + N * 78 + 78);
+
+    return {
+      catName: p.catName || 'รวม', sample: !!p.sample,
+      causeLabel: isAll ? 'ทุกสาเหตุ' : 'ตัดสาเหตุลูกค้า',
+      labelLast, labelPrev,
+      winCards, sumGtc, gD, nUp: String(nUp), nDown: String(nDown),
+      improvers, decliners, noUp: improvers.length === 0, noDown: decliners.length === 0,
+      bestLast, worstLast, noBest: bestLast.length === 0, noWorst: worstLast.length === 0,
+      moverGtc: narrow ? '1fr' : 'repeat(2,minmax(0,1fr))',
+      cngChips, emptyTable,
+      rows, q: s.q, onSearch: (ev) => this.setState({ q: ev.target.value }), gtc, minW,
+      monthHeads: narrow ? [] : months.map(m => ({ label: m })),
+      winHeads,
+      sortName: { arrow: arrowFor('name'), color: col === 'name' ? '#0e5a61' : '#8b96a4', onClick: setSort('name', 'asc') },
+      sortDelta: { arrow: arrowFor('delta'), color: col === 'delta' ? '#0e5a61' : '#8b96a4', onClick: setSort('delta', 'asc') },
+    };
+  }
+}
+</script>
+</body>
+</html>
